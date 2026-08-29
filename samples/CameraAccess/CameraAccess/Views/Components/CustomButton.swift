@@ -23,12 +23,12 @@ struct CustomButton: View {
   enum ButtonStyle {
     case primary, destructive
 
-    var backgroundColor: Color {
+    var backgroundGradientColors: [Color] {
       switch self {
       case .primary:
-        return .appPrimary
+        return [Color.relivingBurgundy, Color.relivingBurgundy.opacity(0.82)]
       case .destructive:
-        return .destructiveBackground
+        return [.destructiveBackground, .destructiveBackground]
       }
     }
 
@@ -40,19 +40,36 @@ struct CustomButton: View {
         return .destructiveForeground
       }
     }
+
+    var shadowColor: Color {
+      switch self {
+      case .primary:
+        return .relivingBurgundy
+      case .destructive:
+        return .black
+      }
+    }
   }
 
   var body: some View {
     Button(action: action) {
       Text(title)
-        .font(.system(size: 15, weight: .semibold))
+        .font(.system(size: 16, weight: .semibold, design: .rounded))
         .foregroundStyle(style.foregroundColor)
         .frame(maxWidth: .infinity)
         .frame(height: 56)
-        .background(style.backgroundColor)
-        .cornerRadius(30)
+        .background(
+          LinearGradient(colors: style.backgroundGradientColors, startPoint: .top, endPoint: .bottom),
+          in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+        )
+        .overlay {
+          RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .stroke(Color.white.opacity(style == .primary ? 0.18 : 0), lineWidth: 1)
+        }
+        .shadow(color: style.shadowColor.opacity(0.28), radius: 10, x: 0, y: 5)
     }
+    .buttonStyle(.pressable)
     .disabled(isDisabled)
-    .opacity(isDisabled ? 0.6 : 1.0)
+    .opacity(isDisabled ? 0.55 : 1.0)
   }
 }

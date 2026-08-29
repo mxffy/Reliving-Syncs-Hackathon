@@ -44,7 +44,7 @@ final class PersonaConversationService {
   private(set) var activePersonaID: UUID?
   private(set) var lastError: String?
   /// IDs of default objects currently linked to a visible, tracked AprilTag; kept in sync by
-  /// `CameraObjectOverlay` and consulted only by the hardcoded "Mark" + object voice trigger.
+  /// `CameraObjectOverlay` and consulted only by the per-clip trigger-word matcher.
   var currentlyViewedObjectIDs: Set<UUID> = []
   /// The most recent live transcript heard, so the UI can show it as proof the mic is picking up speech.
   private(set) var liveTranscript: String = ""
@@ -63,14 +63,6 @@ final class PersonaConversationService {
   private let retrievalCooldown: TimeInterval = 1.5
 
   private static let farewellWords: Set<String> = ["bye", "goodbye"]
-  /// Phonetic code for the hardcoded trigger name, computed once.
-  private static let markSoundex = soundex("Mark")
-  /// Fixed IDs of the default Telephone/Vase objects (see `MediaCategoryStore`), mapped to the
-  /// bundled clip resource name to play directly when "Mark" is heard while viewing that object.
-  private static let hardcodedObjectAudioResource: [UUID: String] = [
-    UUID(uuidString: "4E4A786B-7911-44B7-95D6-997B6AD2DD35")!: "telephone",
-    UUID(uuidString: "9D3C7C7B-6A3F-4B3E-9C8F-2B8E5A6C1D2E")!: "vase",
-  ]
   /// Excluded when scoring keyword overlap, so retrieval boosts on real topic words ("golf") not filler words.
   private static let overlapStopwords: Set<String> = [
     "a", "an", "the", "i", "you", "he", "she", "it", "we", "they", "is", "am", "are", "was", "were",
@@ -106,7 +98,7 @@ final class PersonaConversationService {
   @ObservationIgnored private var stabilizationTask: Task<Void, Never>?
   @ObservationIgnored private var lastProcessedQueryTranscript = ""
   @ObservationIgnored private var lastRetrievalAt: Date?
-  @ObservationIgnored private var lastHardcodedTriggerObjectID: UUID?
+  @ObservationIgnored private var lastTriggeredAudioClipID: UUID?
 
   init(
     mediaStore: MediaCategoryStore = .shared,
@@ -235,9 +227,9 @@ final class PersonaConversationService {
   private func restartIfNeeded() {
     guard wantsListening, let speechRecognizer else { return }
     recognitionRequest?.endAudio()
-    // A finalized result marks a natural pause; allow the hardcoded object trigger to fire
+    // A finalized result marks a natural pause; allow an object trigger word to fire
     // again on the next utterance instead of staying suppressed for the rest of the session.
-    lastHardcodedTriggerObjectID = nil
+    lastTriggeredAudioClipID = nil
     startRecognitionTask(with: speechRecognizer)
   }
 
@@ -257,7 +249,7 @@ final class PersonaConversationService {
     // audio and recursively trigger another response.
     guard conversationState != .playing else { return }
 
-    if attemptHardcodedObjectTrigger(words: words) {
+    if attemptObjectTriggerWordMatch(words: words) {
       return
     }
 
@@ -269,23 +261,27 @@ final class PersonaConversationService {
     scheduleRetrieval(for: raw)
   }
 
-  /// Hardcoded shortcut, independent of the persona/semantic-retrieval pipeline: hearing "Mark"
-  /// while a default object is linked, tracked, and in view plays that object's fixed clip directly.
-  private func attemptHardcodedObjectTrigger(words: [String]) -> Bool {
-    guard words.contains(where: { Self.soundex($0) == Self.markSoundex }) else { return false }
+  /// Any object's clip can be given a user-defined trigger word (see `VoiceMemoriesEditor`); hearing
+  /// that word while the object is linked, tracked, and in view plays that clip directly, independent
+  /// of the semantic-retrieval pipeline used for personas.
+  private func attemptObjectTriggerWordMatch(words: [String]) -> Bool {
     guard
-      let match = currentlyViewedObjectIDs
-        .compactMap({ id in Self.hardcodedObjectAudioResource[id].map { (id: id, resource: $0) } })
-        .first,
-      match.id != lastHardcodedTriggerObjectID,
-      let audioURL = Bundle.main.url(forResource: match.resource, withExtension: "mp3")
+      let match = mediaStore.objectItems
+        .filter({ currentlyViewedObjectIDs.contains($0.id) })
+        .flatMap({ $0.audioClips })
+        .first(where: { clip in
+          guard let triggerWord = clip.triggerWord, !triggerWord.isEmpty else { return false }
+          let targetCode = Self.soundex(triggerWord)
+          return words.contains { Self.soundex($0) == targetCode }
+        }),
+      match.id != lastTriggeredAudioClipID
     else {
       return false
     }
-    lastHardcodedTriggerObjectID = match.id
+    lastTriggeredAudioClipID = match.id
     playbackService.stop()
     conversationState = .playing
-    playbackService.play(url: audioURL) { [weak self] in
+    playbackService.play(url: match.audioURL) { [weak self] in
       Task { @MainActor in
         guard let self, self.conversationState == .playing else { return }
         self.conversationState = self.wantsListening ? .listening : .idle

@@ -13,7 +13,6 @@
 // the photo with OpenAI, then sends it to Meshy's Image to 3D API.
 //
 
-import AVFoundation
 import QuickLook
 import SwiftUI
 import UIKit
@@ -127,7 +126,7 @@ struct RenderingDescriptionView: View {
 
   private var generationView: some View {
     ZStack {
-      Color.relivingIvory.ignoresSafeArea()
+      Color.relivingPaperGradient.ignoresSafeArea()
 
       VStack(spacing: 24) {
         if showSuccessCelebration {
@@ -144,9 +143,7 @@ struct RenderingDescriptionView: View {
             .scaleEffect(successScale)
             .opacity(successOpacity)
         } else {
-          LoopingLoadingVideoView()
-            .frame(width: 230, height: 270)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+          PolaroidDevelopingView(image: image)
 
           if isGenerating {
             ProgressView()
@@ -215,9 +212,7 @@ struct RenderingDescriptionView: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
 
-        if category == .person {
-          VoiceMemoriesEditor(audioClips: $audioClips)
-        }
+        VoiceMemoriesEditor(audioClips: $audioClips)
 
         CustomButton(title: "Use", style: .primary, isDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
           onComplete(
@@ -235,7 +230,7 @@ struct RenderingDescriptionView: View {
       }
       .padding(24)
     }
-    .background(Color.relivingIvory)
+    .background(Color.relivingPaperGradient)
   }
 
   private func discardGeneratedModel() {
@@ -328,52 +323,6 @@ struct RenderingDescriptionView: View {
       return "Connecting to OpenAI…"
     case .recoloring:
       return "Recoloring with OpenAI…"
-    }
-  }
-}
-
-private struct LoopingLoadingVideoView: UIViewRepresentable {
-  func makeUIView(context: Context) -> LoopingVideoUIView {
-    LoopingVideoUIView()
-  }
-
-  func updateUIView(_ uiView: LoopingVideoUIView, context: Context) {}
-}
-
-private final class LoopingVideoUIView: UIView {
-  private let player = AVQueuePlayer()
-  private var looper: AVPlayerLooper?
-
-  override class var layerClass: AnyClass { AVPlayerLayer.self }
-
-  private var playerLayer: AVPlayerLayer {
-    layer as! AVPlayerLayer
-  }
-
-  override init(frame: CGRect) {
-    super.init(frame: frame)
-    backgroundColor = UIColor(red: 234 / 255, green: 224 / 255, blue: 208 / 255, alpha: 1)
-    playerLayer.player = player
-    playerLayer.videoGravity = .resizeAspect
-
-    if let videoURL = Bundle.main.url(forResource: "RemiLoading", withExtension: "mp4") {
-      let item = AVPlayerItem(url: videoURL)
-      looper = AVPlayerLooper(player: player, templateItem: item)
-      player.isMuted = true
-      player.play()
-    }
-  }
-
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-
-  override func didMoveToWindow() {
-    super.didMoveToWindow()
-    if window == nil {
-      player.pause()
-    } else {
-      player.play()
     }
   }
 }

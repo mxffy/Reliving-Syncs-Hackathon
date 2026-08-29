@@ -27,6 +27,7 @@ struct NonStreamView: View {
   let onStartPhoneCamera: () -> Void
   @State private var showSettingsMenu: Bool = false
   @State private var showAppSettings: Bool = false
+  @State private var mediaStore = MediaCategoryStore.shared
 
   private var isRegistered: Bool {
     wearablesVM.registrationState == .registered
@@ -36,9 +37,13 @@ struct NonStreamView: View {
     isRegistered && viewModel.hasActiveDevice
   }
 
+  private var filmstripItems: [CapturedMediaItem] {
+    mediaStore.objectItems + mediaStore.peopleItems
+  }
+
   var body: some View {
     ZStack {
-      Color.white.ignoresSafeArea()
+      Color.relivingPaperGradient.ignoresSafeArea()
 
       // Dismiss overlay when tapping outside the settings menu (placed first so it's behind content)
       if showSettingsMenu {
@@ -53,19 +58,31 @@ struct NonStreamView: View {
       }
 
       VStack {
-        HStack {
+        HStack(alignment: .center) {
           Button {
             showAppSettings = true
           } label: {
             Image(systemName: "gearshape.fill")
-              .font(.system(size: 22, weight: .semibold))
-              .foregroundStyle(.black)
+              .font(.system(size: 20, weight: .semibold))
+              .foregroundStyle(Color.relivingBurgundy)
               .frame(width: 44, height: 44)
+              .background(Color.relivingCream, in: Circle())
+              .shadow(color: Color.relivingInk.opacity(0.2), radius: 5, y: 2)
           }
+          .buttonStyle(.pressable)
           .accessibilityLabel("Settings")
           .accessibilityIdentifier("settings_button")
 
           Spacer()
+
+          Image("brownLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 150, height: 46)
+            .accessibilityHidden(true)
+
+          Spacer()
+
           if isRegistered {
             Button {
               withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -73,10 +90,13 @@ struct NonStreamView: View {
               }
             } label: {
               Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.green)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(Color.relivingSepia)
                 .frame(width: 48, height: 48)
+                .background(Color.relivingCream, in: Circle())
+                .shadow(color: Color.relivingInk.opacity(0.2), radius: 5, y: 2)
             }
+            .buttonStyle(.pressable)
             .accessibilityLabel("Glasses connected")
             .accessibilityIdentifier("connected_glasses_button")
             .overlay(alignment: .trailing) {
@@ -99,11 +119,14 @@ struct NonStreamView: View {
             Button {
               wearablesVM.connectGlasses()
             } label: {
-              Image(systemName: "xmark.circle")
-                .font(.system(size: 28, weight: .semibold))
+              Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(.red)
                 .frame(width: 48, height: 48)
+                .background(Color.relivingCream, in: Circle())
+                .shadow(color: Color.relivingInk.opacity(0.2), radius: 5, y: 2)
             }
+            .buttonStyle(.pressable)
             .disabled(wearablesVM.registrationState == .registering)
             .accessibilityLabel("Glasses not connected")
             .accessibilityIdentifier("disconnected_glasses_button")
@@ -115,8 +138,20 @@ struct NonStreamView: View {
         Button(action: handlePrimaryAction) {
           ZStack {
             Circle()
-              .fill(.black)
+              .fill(
+                LinearGradient(
+                  colors: [Color.relivingBurgundy, Color.relivingInk],
+                  startPoint: .top,
+                  endPoint: .bottom
+                )
+              )
               .frame(width: 112, height: 112)
+              .overlay {
+                Circle()
+                  .stroke(Color.relivingCream.opacity(0.85), lineWidth: 4)
+                  .padding(6)
+              }
+              .shadow(color: Color.relivingInk.opacity(0.35), radius: 14, y: 8)
 
             if usesGlasses {
               Image(.smartGlassesIcon)
@@ -132,10 +167,37 @@ struct NonStreamView: View {
             }
           }
         }
+        .buttonStyle(.pressable)
         .accessibilityLabel(usesGlasses ? "Start glasses streaming" : "Open iPhone camera")
         .accessibilityIdentifier("primary_camera_button")
 
         Spacer()
+
+        if !filmstripItems.isEmpty {
+          VStack(spacing: 4) {
+            FilmSprocketStrip(tint: .relivingBurgundy)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+              HStack(alignment: .top, spacing: 16) {
+                ForEach(Array(filmstripItems.enumerated()), id: \.element.id) { index, item in
+                  PolaroidThumbnail(
+                    image: item.photo,
+                    caption: item.name,
+                    rotationDegrees: index.isMultiple(of: 2) ? -3.5 : 3.5,
+                    width: 92,
+                    photoHeight: 92
+                  )
+                }
+              }
+              .padding(.horizontal, 4)
+              .padding(.vertical, 10)
+            }
+
+            FilmSprocketStrip(tint: .relivingBurgundy)
+          }
+          .padding(.vertical, 6)
+          .background(Color.relivingBeige.opacity(0.35), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
       }
       .padding(.all, 24)
     }

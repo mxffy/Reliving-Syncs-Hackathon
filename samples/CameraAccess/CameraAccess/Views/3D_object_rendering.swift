@@ -17,12 +17,21 @@ import CoreImage
 import SwiftUI
 import UIKit
 
+// Vintage instant-film / photo-album palette. Kept as the same token names other screens already
+// depend on, but retuned to a richer, warmer set of hues (deep wine, warm parchment, kraft tan,
+// sage green, warm charcoal ink) instead of the previous flatter sage/gray combo — note `relivingBeige`
+// used to be an exact duplicate of `relivingLightSage`, which was part of why things read as flat.
 extension Color {
-  static let relivingBurgundy = Color(red: 119 / 255, green: 69 / 255, blue: 74 / 255)
-  static let relivingLightSage = Color(red: 177 / 255, green: 182 / 255, blue: 161 / 255)
-  static let relivingIvory = Color(red: 234 / 255, green: 224 / 255, blue: 208 / 255)
-  static let relivingBeige = Color(red: 177 / 255, green: 182 / 255, blue: 161 / 255)
-  static let relivingDarkSage = Color(red: 68 / 255, green: 68 / 255, blue: 68 / 255)
+  /// Deep wine — primary accent, headlines, active states.
+  static let relivingBurgundy = Color(red: 0.42, green: 0.20, blue: 0.24)
+  /// Muted sage green — secondary accent (echoes the Remi mascot's shell).
+  static let relivingLightSage = Color(red: 0.69, green: 0.71, blue: 0.63)
+  /// Warm parchment — primary background.
+  static let relivingIvory = Color(red: 0.969, green: 0.925, blue: 0.847)
+  /// Kraft-paper tan — card/chip fills. Deliberately distinct from `relivingLightSage` now.
+  static let relivingBeige = Color(red: 0.80, green: 0.74, blue: 0.62)
+  /// Warm near-black ink — body text on light backgrounds (replaces the old cold gray).
+  static let relivingDarkSage = Color(red: 0.24, green: 0.19, blue: 0.17)
 }
 
 /// Which recognition category a captured photo belongs to.
@@ -57,19 +66,24 @@ struct MemoryAudioClip: Identifiable, Equatable {
   var transcript: String
   var embedding: [Float]?
   var title: String?
+  /// Optional word that, when heard aloud while this clip's object is in view, plays this
+  /// clip directly (independent of the semantic transcript-similarity retrieval).
+  var triggerWord: String?
 
   init(
     id: UUID = UUID(),
     audioURL: URL,
     transcript: String,
     embedding: [Float]? = nil,
-    title: String? = nil
+    title: String? = nil,
+    triggerWord: String? = nil
   ) {
     self.id = id
     self.audioURL = audioURL
     self.transcript = transcript
     self.embedding = embedding
     self.title = title
+    self.triggerWord = triggerWord
   }
 }
 
@@ -112,7 +126,8 @@ final class MediaCategoryStore {
       name: "Telephone",
       description: "Dusty vintage rotary telephone",
       usdzURL: modelURL,
-      isDefault: true
+      isDefault: true,
+      audioClips: defaultTriggerAudioClip(bundle: bundle, resource: "telephone", title: "Telephone memory", triggerWord: "Mark")
     )
   }
 
@@ -130,8 +145,15 @@ final class MediaCategoryStore {
       name: "Vase",
       description: "Ornate Victorian-era porcelain vase",
       usdzURL: modelURL,
-      isDefault: true
+      isDefault: true,
+      audioClips: defaultTriggerAudioClip(bundle: bundle, resource: "vase", title: "Vase memory", triggerWord: "Mark")
     )
+  }
+
+  /// A single bundled clip identified purely by its trigger word, with no transcript/embedding needed.
+  private static func defaultTriggerAudioClip(bundle: Bundle, resource: String, title: String, triggerWord: String) -> [MemoryAudioClip] {
+    guard let audioURL = bundle.url(forResource: resource, withExtension: "mp3") else { return [] }
+    return [MemoryAudioClip(audioURL: audioURL, transcript: "", title: title, triggerWord: triggerWord)]
   }
 
   private static func davidItem(bundle: Bundle) -> CapturedMediaItem? {
@@ -248,7 +270,9 @@ struct CategoryImagePickerView: UIViewControllerRepresentable {
   }
 }
 
-/// A category section (Objects or People) with a grid of captured photos and a + button to add more.
+/// A category section (Objects or People) shown as a horizontal, old-film-style filmstrip of
+/// polaroid photos, with a dashed "add" card always visible as the first item so it's never
+/// hidden behind a scroll.
 struct CategorySectionView: View {
   let title: String
   let category: MediaCategoryKind
@@ -259,64 +283,46 @@ struct CategorySectionView: View {
   @State private var pendingImage: UIImage?
   @State private var selectedItem: CapturedMediaItem?
 
-  private let columns = [GridItem(.adaptive(minimum: 72), spacing: 12)]
-
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 10) {
       Text(title)
-        .font(.system(size: 18, weight: .semibold))
+        .font(.system(size: 19, weight: .semibold, design: .rounded))
         .foregroundStyle(Color.relivingBurgundy)
 
-      LazyVGrid(columns: columns, spacing: 12) {
-        Button {
-          showSourceOptions = true
-        } label: {
-          RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.relivingBeige)
-            .frame(width: 72, height: 72)
-            .overlay {
-              Image(systemName: "plus")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Color.relivingDarkSage)
+      VStack(spacing: 4) {
+        FilmSprocketStrip(tint: .relivingBurgundy)
+
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(alignment: .top, spacing: 16) {
+            Button {
+              showSourceOptions = true
+            } label: {
+              PolaroidAddCard()
             }
-        }
-        .accessibilityLabel("Add \(title.lowercased()) photo")
+            .buttonStyle(.pressable)
+            .accessibilityLabel("Add \(title.lowercased()) photo")
 
-        ForEach(items) { item in
-          Button {
-            selectedItem = item
-          } label: {
-            VStack(spacing: 5) {
-              ZStack(alignment: .bottomTrailing) {
-                Image(uiImage: item.photo)
-                  .resizable()
-                  .aspectRatio(contentMode: .fill)
-                  .frame(width: 72, height: 72)
-                  .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                  .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                      .stroke(Color.relivingBeige, lineWidth: 3)
-                  }
-
-                if item.usdzURL != nil {
-                  Image(systemName: "cube.fill")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(4)
-                    .background(Circle().fill(Color.relivingBurgundy))
-                    .padding(3)
-                }
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+              Button {
+                selectedItem = item
+              } label: {
+                PolaroidThumbnail(
+                  image: item.photo,
+                  caption: item.name,
+                  rotationDegrees: index.isMultiple(of: 2) ? -3.5 : 3.5
+                )
               }
-
-              Text(item.name)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.relivingDarkSage)
-                .lineLimit(1)
-                .frame(width: 72)
+              .buttonStyle(.pressable)
             }
           }
+          .padding(.horizontal, 4)
+          .padding(.vertical, 10)
         }
+
+        FilmSprocketStrip(tint: .relivingBurgundy)
       }
+      .padding(.vertical, 6)
+      .background(Color.relivingBeige.opacity(0.35), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
     .confirmationDialog("Add photo", isPresented: $showSourceOptions, titleVisibility: .visible) {
       if UIImagePickerController.isSourceTypeAvailable(.camera) {
@@ -400,37 +406,48 @@ struct CapturedItemDetailView: View {
   @Environment(\.dismiss) private var dismiss
   @State private var showDeleteConfirmation = false
   @State private var showEditor = false
+  @State private var contentVisible = false
 
   var body: some View {
     NavigationStack {
       ScrollView {
-        VStack(spacing: 20) {
-          Image(uiImage: item.photo)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(maxHeight: 220)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(8)
-            .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        VStack(spacing: 22) {
+          VStack(spacing: 8) {
+            Image(uiImage: item.photo)
+              .resizable()
+              .aspectRatio(contentMode: .fit)
+              .frame(maxHeight: 220)
+              .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+          }
+          .padding(10)
+          .padding(.bottom, 18)
+          .background(Color.relivingCream, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          .shadow(color: Color.relivingInk.opacity(0.28), radius: 10, x: 0, y: 6)
+          .rotationEffect(.degrees(-1.5))
 
           if let usdzURL = item.usdzURL {
             USDZPreviewView(url: usdzURL)
               .frame(height: 320)
               .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+              .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                  .stroke(Color.relivingBeige, lineWidth: 1.5)
+              }
           } else {
             Text("3D model unavailable")
               .font(.system(size: 15))
-              .foregroundStyle(.gray)
+              .foregroundStyle(Color.relivingDarkSage.opacity(0.6))
           }
 
           VStack(alignment: .leading, spacing: 10) {
             HStack {
               VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
-                  .font(.system(size: 20, weight: .semibold))
+                  .font(.system(size: 21, weight: .semibold, design: .rounded))
+                  .foregroundStyle(Color.relivingBurgundy)
                 Text(item.description.isEmpty ? "No description" : item.description)
                   .font(.system(size: 15))
-                  .foregroundStyle(.secondary)
+                  .foregroundStyle(Color.relivingDarkSage.opacity(0.7))
               }
               Spacer()
               if !item.isDefault {
@@ -438,26 +455,36 @@ struct CapturedItemDetailView: View {
                   showEditor = true
                 } label: {
                   Image(systemName: "pencil")
+                    .foregroundStyle(Color.relivingBurgundy)
                     .frame(width: 44, height: 44)
+                    .background(Color.relivingCream, in: Circle())
+                    .shadow(color: Color.relivingInk.opacity(0.2), radius: 4, y: 2)
                 }
+                .buttonStyle(.pressable)
                 .accessibilityLabel("Edit and regenerate")
               }
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(16)
+          .background(Color.relivingCream.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-          if category == .person {
-            VoiceMemoriesEditor(audioClips: $item.audioClips)
-              .onChange(of: item.audioClips) { _, _ in
-                onUpdate(item)
-              }
-          }
+          VoiceMemoriesEditor(audioClips: $item.audioClips)
+            .onChange(of: item.audioClips) { _, _ in
+              onUpdate(item)
+            }
         }
         .padding(24)
+        .opacity(contentVisible ? 1 : 0)
+        .offset(y: contentVisible ? 0 : 12)
+        .animation(.easeOut(duration: 0.4), value: contentVisible)
       }
-      .background(Color.relivingIvory)
+      .background(Color.relivingPaperGradient)
       .navigationTitle("Details")
       .navigationBarTitleDisplayMode(.inline)
+      .onAppear {
+        withAnimation { contentVisible = true }
+      }
       .toolbar {
         ToolbarItem(placement: .navigationBarLeading) {
           Button {

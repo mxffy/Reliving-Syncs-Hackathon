@@ -65,6 +65,7 @@
 		FEEE002B2F95000100000016 /* vase.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE002A2F95000100000016 /* vase.mp3 */; };
 		FEEE002D2F95000100000017 /* Angelica.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE002C2F95000100000017 /* Angelica.usdz */; };
 		FEEE002F2F95000100000018 /* alice_new.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE002E2F95000100000018 /* alice_new.png */; };
+		FEEE00312F95000100000019 /* PolaroidUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00302F95000100000019 /* PolaroidUI.swift */; };
 		F0CA00162F97000F00000001 /* AprilTagTrackingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */; };
 		F0CA00192F97001200000001 /* SwiftAprilTag in Frameworks */ = {isa = PBXBuildFile; productRef = F0CA00182F97001100000001 /* SwiftAprilTag */; };
 		FEEE00012F95000100000001 /* DeviceSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00002F95000100000001 /* DeviceSessionManager.swift */; };
@@ -163,6 +164,7 @@
 		FEEE002A2F95000100000016 /* vase.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = vase.mp3; sourceTree = "<group>"; };
 		FEEE002C2F95000100000017 /* Angelica.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Angelica.usdz; sourceTree = "<group>"; };
 		FEEE002E2F95000100000018 /* alice_new.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = alice_new.png; sourceTree = "<group>"; };
+		FEEE00302F95000100000019 /* PolaroidUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolaroidUI.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -303,6 +305,7 @@
 				8FFD5FF22E8422580035E446 /* CircleButton.swift */,
 				8FFD5FF32E8422580035E446 /* CustomButton.swift */,
 				E6DA45172E79A63100E3F688 /* CardView.swift */,
+				FEEE00302F95000100000019 /* PolaroidUI.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -517,6 +520,7 @@
 				FEEE000B2F95000100000006 /* MemoryAudioRecorder.swift in Sources */,
 				FEEE000D2F95000100000007 /* PersonaConversationService.swift in Sources */,
 				FEEE00192F9500010000000D /* VoiceMemoriesEditor.swift in Sources */,
+				FEEE00312F95000100000019 /* PolaroidUI.swift in Sources */,
 				8FD96B882E6F0A9800F56AB1 /* StreamSessionView.swift in Sources */,
 				8FFD60602E84A2F70035E446 /* MainAppView.swift in Sources */,
 				8FFD60612E84A2F70035E446 /* DebugMenuView.swift in Sources */,

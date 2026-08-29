@@ -34,6 +34,9 @@ struct VoiceMemoriesEditor: View {
       Text("Voice Memories")
         .font(.system(size: 16, weight: .semibold))
         .foregroundStyle(Color.relivingBurgundy)
+      Text("Upload or record a clip, then optionally give it a trigger word: hearing that word aloud plays it back.")
+        .font(.system(size: 12))
+        .foregroundStyle(Color.relivingDarkSage.opacity(0.7))
 
       if !audioClips.isEmpty {
         VStack(spacing: 8) {
@@ -109,14 +112,23 @@ struct VoiceMemoriesEditor: View {
     HStack(alignment: .top, spacing: 8) {
       Image(systemName: "waveform.circle.fill")
         .foregroundStyle(Color.relivingBurgundy)
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: 4) {
         Text(clip.title ?? "Voice memory")
           .font(.system(size: 13, weight: .semibold))
           .foregroundStyle(Color.relivingBurgundy)
-        Text(clip.transcript.isEmpty ? "No transcript detected — it may still be matched less reliably." : clip.transcript)
+        Text(clip.transcript.isEmpty ? "No transcript detected. It may still be matched less reliably." : clip.transcript)
           .font(.system(size: 12))
           .foregroundStyle(Color.relivingDarkSage)
           .lineLimit(2)
+        HStack(spacing: 6) {
+          Image(systemName: "textformat")
+            .font(.system(size: 11))
+            .foregroundStyle(Color.relivingDarkSage.opacity(0.6))
+          TextField("Trigger word (e.g. \"Mark\")", text: triggerWordBinding(for: clip))
+            .font(.system(size: 12))
+            .textFieldStyle(.plain)
+            .autocorrectionDisabled()
+        }
       }
       Spacer(minLength: 8)
       Button {
@@ -128,6 +140,16 @@ struct VoiceMemoriesEditor: View {
     }
     .padding(8)
     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.relivingIvory))
+  }
+
+  private func triggerWordBinding(for clip: MemoryAudioClip) -> Binding<String> {
+    Binding(
+      get: { audioClips.first(where: { $0.id == clip.id })?.triggerWord ?? "" },
+      set: { newValue in
+        guard let index = audioClips.firstIndex(where: { $0.id == clip.id }) else { return }
+        audioClips[index].triggerWord = newValue.isEmpty ? nil : newValue
+      }
+    )
   }
 
   private func handleFileImport(_ result: Result<URL, Error>) {

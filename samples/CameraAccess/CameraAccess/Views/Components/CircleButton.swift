@@ -23,21 +23,30 @@ struct CircleButton: View {
 
   var body: some View {
     Button(action: action) {
-      if let text {
-        VStack(spacing: 2) {
+      Group {
+        if let text {
+          VStack(spacing: 2) {
+            Image(systemName: icon)
+              .font(.system(size: 14))
+            Text(text)
+              .font(.system(size: 10, weight: .medium))
+          }
+        } else {
           Image(systemName: icon)
-            .font(.system(size: 14))
-          Text(text)
-            .font(.system(size: 10, weight: .medium))
+            .font(.system(size: iconSize, weight: .semibold))
         }
-      } else {
-        Image(systemName: icon)
-          .font(.system(size: iconSize))
       }
+      .foregroundStyle(Color.relivingBurgundy)
+      .frame(width: size, height: size)
+      .background(
+        LinearGradient(colors: [.relivingCream, .relivingIvory], startPoint: .top, endPoint: .bottom),
+        in: Circle()
+      )
+      .overlay {
+        Circle().stroke(Color.relivingBeige.opacity(0.6), lineWidth: 1)
+      }
+      .shadow(color: Color.relivingInk.opacity(0.25), radius: 6, x: 0, y: 3)
     }
-    .foregroundStyle(.black)
-    .frame(width: size, height: size)
-    .background(.white)
-    .clipShape(Circle())
+    .buttonStyle(.pressable)
   }
 }

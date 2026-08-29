@@ -221,12 +221,13 @@ struct CameraObjectOverlay: View {
           .background(Color.relivingBurgundy, in: Circle())
           .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
       }
+      .buttonStyle(.pressable)
       .accessibilityLabel(isEditModeOn ? "Exit edit mode" : "Enter edit mode")
 
       if isEditModeOn {
         VStack(spacing: 10) {
           Text("Objects")
-            .font(.system(size: 16, weight: .bold))
+            .font(.system(size: 16, weight: .bold, design: .rounded))
             .foregroundStyle(Color.relivingBurgundy)
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -234,20 +235,21 @@ struct CameraObjectOverlay: View {
             VStack(spacing: 8) {
               Image(systemName: "cube.transparent")
                 .font(.system(size: 24))
-                .foregroundStyle(Color.relivingDarkSage)
+                .foregroundStyle(Color.relivingDarkSage.opacity(0.6))
               Text("No 3D objects yet")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.relivingDarkSage)
+                .foregroundStyle(Color.relivingDarkSage.opacity(0.6))
                 .multilineTextAlignment(.center)
             }
             .frame(width: 92, height: 90)
           } else {
             ScrollView(.vertical, showsIndicators: false) {
-              LazyVStack(spacing: 12) {
+              LazyVStack(spacing: 14) {
                 ForEach(availableObjects) { item in
                   libraryItem(item)
                 }
               }
+              .padding(.vertical, 4)
             }
             .frame(maxHeight: 380)
           }
@@ -406,31 +408,15 @@ struct CameraObjectOverlay: View {
 
   private func libraryItem(_ item: CapturedMediaItem) -> some View {
     let isPlaceable = hasUnlinkedTrackedTag
-    return VStack(spacing: 5) {
-      Image(uiImage: item.photo)
-        .resizable()
-        .aspectRatio(contentMode: .fill)
-        .frame(width: 84, height: 74)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(alignment: .bottomTrailing) {
-          Image(systemName: "cube.fill")
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(5)
-            .background(Color.relivingBurgundy, in: Circle())
-            .padding(4)
-        }
-
-      Text(item.name)
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(Color.relivingBurgundy)
-        .lineLimit(1)
-    }
-    .frame(width: 92)
-    .padding(.vertical, 6)
-    .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    return PolaroidThumbnail(
+      image: item.photo,
+      caption: item.name,
+      hasModel: true,
+      width: 92,
+      photoHeight: 70,
+      isDimmed: !isPlaceable
+    )
     // Disabled (dimmed, non-interactive) until an unlinked AprilTag is visible to place onto.
-    .opacity(isPlaceable ? 1 : 0.4)
     .allowsHitTesting(isPlaceable)
     .onTapGesture {
       tapToPlaceOrLink(item)
