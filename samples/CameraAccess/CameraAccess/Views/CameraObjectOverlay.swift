@@ -536,7 +536,8 @@ private struct PersonaOverlayView: View {
       baseYaw: .pi,
       cameraDistance: 1.3,
       horizontalFramingOffset: 0.1,
-      verticalFramingOffset: -0.7,
+      // Less aggressive than a pure face-only crop, so the top of the head isn't clipped.
+      verticalFramingOffset: -0.45,
       lightingIntensityMultiplier: 0.4
     )
     .scaleEffect(scale)
