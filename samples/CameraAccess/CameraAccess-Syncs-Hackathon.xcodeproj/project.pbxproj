@@ -8,6 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		8F2D23802E856711002D0588 /* DebugMenuViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D237F2E856711002D0588 /* DebugMenuViewModel.swift */; };
+		FEEE00052F95000100000003 /* SentenceEmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00042F95000100000003 /* SentenceEmbeddingService.swift */; };
+		FEEE00072F95000100000004 /* PersonaAudioPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00062F95000100000004 /* PersonaAudioPlaybackService.swift */; };
+		FEEE00092F95000100000005 /* MemoryAudioClipImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00082F95000100000005 /* MemoryAudioClipImporter.swift */; };
+		FEEE000B2F95000100000006 /* MemoryAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE000A2F95000100000006 /* MemoryAudioRecorder.swift */; };
+		FEEE000D2F95000100000007 /* PersonaConversationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE000C2F95000100000007 /* PersonaConversationService.swift */; };
+		FEEE000F2F95000100000008 /* David.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE000E2F95000100000008 /* David.usdz */; };
+		FEEE00112F95000100000009 /* David.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00102F95000100000009 /* David.png */; };
+		FEEE00132F9500010000000A /* golf.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00122F9500010000000A /* golf.mp3 */; };
+		FEEE00172F9500010000000C /* telephone.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00162F9500010000000C /* telephone.mp3 */; };
+		FEEE00192F9500010000000D /* VoiceMemoriesEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00182F9500010000000D /* VoiceMemoriesEditor.swift */; };
 		8F8F00782E8ACB4600A4BDAF /* WearablesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8F00772E8ACB4500A4BDAF /* WearablesViewModel.swift */; };
 		8FD96B7F2E6F0A9800F56AB1 /* CameraAccessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD96B792E6F0A9800F56AB1 /* CameraAccessApp.swift */; };
 		8FD96B812E6F0A9800F56AB1 /* HomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD96B722E6F0A9800F56AB1 /* HomeScreenView.swift */; };
@@ -42,8 +52,6 @@
 		F0CA00072F97000500000001 /* Rendering-Description.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00082F97000600000001 /* Rendering-Description.swift */; };
 		F0CA00092F97000700000001 /* CameraObjectOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA000A2F97000800000001 /* CameraObjectOverlay.swift */; };
 		F0CA000C2F97000900000001 /* Telephone.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000B2F97000900000001 /* Telephone.usdz */; };
-		F0CA000E2F97000A00000001 /* Paul.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000D2F97000A00000001 /* Paul.usdz */; };
-		F0CA00102F97000B00000001 /* Paul.png in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000F2F97000B00000001 /* Paul.png */; };
 		F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00112F97000C00000001 /* RemiLoading.mp4 */; };
 		F0CA00142F97000D00000001 /* Telephone.png in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00132F97000D00000001 /* Telephone.png */; };
 		F0CA00162F97000F00000001 /* AprilTagTrackingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */; };
@@ -119,12 +127,20 @@
 		F0CA00082F97000600000001 /* Rendering-Description.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering-Description.swift"; sourceTree = "<group>"; };
 		F0CA000A2F97000800000001 /* CameraObjectOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraObjectOverlay.swift; sourceTree = "<group>"; };
 		F0CA000B2F97000900000001 /* Telephone.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Telephone.usdz; sourceTree = "<group>"; };
-		F0CA000D2F97000A00000001 /* Paul.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Paul.usdz; sourceTree = "<group>"; };
-		F0CA000F2F97000B00000001 /* Paul.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Paul.png; sourceTree = "<group>"; };
 		F0CA00112F97000C00000001 /* RemiLoading.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = RemiLoading.mp4; sourceTree = "<group>"; };
 		F0CA00132F97000D00000001 /* Telephone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Telephone.png; sourceTree = "<group>"; };
 		F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AprilTagTrackingService.swift; sourceTree = "<group>"; };
 		FEEE00002F95000100000001 /* DeviceSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSessionManager.swift; sourceTree = "<group>"; };
+		FEEE00042F95000100000003 /* SentenceEmbeddingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentenceEmbeddingService.swift; sourceTree = "<group>"; };
+		FEEE00062F95000100000004 /* PersonaAudioPlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaAudioPlaybackService.swift; sourceTree = "<group>"; };
+		FEEE00082F95000100000005 /* MemoryAudioClipImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryAudioClipImporter.swift; sourceTree = "<group>"; };
+		FEEE000A2F95000100000006 /* MemoryAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryAudioRecorder.swift; sourceTree = "<group>"; };
+		FEEE000C2F95000100000007 /* PersonaConversationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaConversationService.swift; sourceTree = "<group>"; };
+		FEEE000E2F95000100000008 /* David.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = David.usdz; sourceTree = "<group>"; };
+		FEEE00102F95000100000009 /* David.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = David.png; sourceTree = "<group>"; };
+		FEEE00122F9500010000000A /* golf.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = golf.mp3; sourceTree = "<group>"; };
+		FEEE00162F9500010000000C /* telephone.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = telephone.mp3; sourceTree = "<group>"; };
+		FEEE00182F9500010000000D /* VoiceMemoriesEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoriesEditor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -191,6 +207,11 @@
 				F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */,
 				8F2D237F2E856711002D0588 /* DebugMenuViewModel.swift */,
 				FEEE00002F95000100000001 /* DeviceSessionManager.swift */,
+				FEEE00042F95000100000003 /* SentenceEmbeddingService.swift */,
+				FEEE00062F95000100000004 /* PersonaAudioPlaybackService.swift */,
+				FEEE00082F95000100000005 /* MemoryAudioClipImporter.swift */,
+				FEEE000A2F95000100000006 /* MemoryAudioRecorder.swift */,
+				FEEE000C2F95000100000007 /* PersonaConversationService.swift */,
 				8FD96B6F2E6F0A9800F56AB1 /* StreamSessionViewModel.swift */,
 				8F8F00772E8ACB4500A4BDAF /* WearablesViewModel.swift */,
 			);
@@ -215,6 +236,7 @@
 				F0CA00052F97000300000001 /* 3D_object_rendering.swift */,
 				F0CA00082F97000600000001 /* Rendering-Description.swift */,
 				F0CA000A2F97000800000001 /* CameraObjectOverlay.swift */,
+				FEEE00182F9500010000000D /* VoiceMemoriesEditor.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -227,8 +249,10 @@
 				8FD96B762E6F0A9800F56AB1 /* Views */,
 				8FD96B772E6F0A9800F56AB1 /* Assets.xcassets */,
 				F0CA000B2F97000900000001 /* Telephone.usdz */,
-				F0CA000D2F97000A00000001 /* Paul.usdz */,
-				F0CA000F2F97000B00000001 /* Paul.png */,
+				FEEE000E2F95000100000008 /* David.usdz */,
+				FEEE00102F95000100000009 /* David.png */,
+				FEEE00122F9500010000000A /* golf.mp3 */,
+				FEEE00162F9500010000000C /* telephone.mp3 */,
 				F0CA00112F97000C00000001 /* RemiLoading.mp4 */,
 				F0CA00132F97000D00000001 /* Telephone.png */,
 				8FD96B782E6F0A9800F56AB1 /* CameraAccess.entitlements */,
@@ -400,8 +424,10 @@
 				E66CC01C2F3E1A9300B07379 /* plant.mp4 in Resources */,
 				8FD96B8D2E6F0A9800F56AB1 /* Assets.xcassets in Resources */,
 				F0CA000C2F97000900000001 /* Telephone.usdz in Resources */,
-				F0CA000E2F97000A00000001 /* Paul.usdz in Resources */,
-				F0CA00102F97000B00000001 /* Paul.png in Resources */,
+				FEEE000F2F95000100000008 /* David.usdz in Resources */,
+				FEEE00112F95000100000009 /* David.png in Resources */,
+				FEEE00132F9500010000000A /* golf.mp3 in Resources */,
+				FEEE00172F9500010000000C /* telephone.mp3 in Resources */,
 				F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */,
 				F0CA00142F97000D00000001 /* Telephone.png in Resources */,
 			);
@@ -441,6 +467,12 @@
 				E6DA451E2E79A63100E3F688 /* CardView.swift in Sources */,
 				E6DA451F2E79A63100E3F688 /* MockDeviceKitView.swift in Sources */,
 				8FD96B872E6F0A9800F56AB1 /* StreamSessionViewModel.swift in Sources */,
+				FEEE00052F95000100000003 /* SentenceEmbeddingService.swift in Sources */,
+				FEEE00072F95000100000004 /* PersonaAudioPlaybackService.swift in Sources */,
+				FEEE00092F95000100000005 /* MemoryAudioClipImporter.swift in Sources */,
+				FEEE000B2F95000100000006 /* MemoryAudioRecorder.swift in Sources */,
+				FEEE000D2F95000100000007 /* PersonaConversationService.swift in Sources */,
+				FEEE00192F9500010000000D /* VoiceMemoriesEditor.swift in Sources */,
 				8FD96B882E6F0A9800F56AB1 /* StreamSessionView.swift in Sources */,
 				8FFD60602E84A2F70035E446 /* MainAppView.swift in Sources */,
 				8FFD60612E84A2F70035E446 /* DebugMenuView.swift in Sources */,

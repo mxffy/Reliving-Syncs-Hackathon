@@ -51,6 +51,7 @@ struct RenderingDescriptionView: View {
   @State private var showSuccessCelebration = false
   @State private var successScale = 0.65
   @State private var successOpacity = 0.0
+  @State private var audioClips: [MemoryAudioClip]
 
   init(
     image: UIImage,
@@ -66,6 +67,7 @@ struct RenderingDescriptionView: View {
     self.onComplete = onComplete
     _name = State(initialValue: existingItem?.name ?? "")
     _description = State(initialValue: existingItem?.description ?? enhancementPrompt ?? "")
+    _audioClips = State(initialValue: existingItem?.audioClips ?? [])
     _isGenerating = State(initialValue: true)
     _progressMessage = State(
       initialValue: enhancementPrompt == nil ? "Connecting to Meshy…" : "Connecting to OpenAI…"
@@ -213,6 +215,10 @@ struct RenderingDescriptionView: View {
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
 
+        if category == .person {
+          VoiceMemoriesEditor(audioClips: $audioClips)
+        }
+
         CustomButton(title: "Use", style: .primary, isDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
           onComplete(
             CapturedMediaItem(
@@ -220,7 +226,8 @@ struct RenderingDescriptionView: View {
               photo: item.photo,
               name: name.trimmingCharacters(in: .whitespacesAndNewlines),
               description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-              usdzURL: item.usdzURL
+              usdzURL: item.usdzURL,
+              audioClips: audioClips
             )
           )
           dismiss()

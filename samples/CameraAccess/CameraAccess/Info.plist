@@ -74,6 +74,10 @@
 	<string>This app needs access to save photos captured from your glasses.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to stream from your phone's camera as a mock device feed.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app listens for family members' names while in camera mode to show their persona.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>This app uses speech recognition to detect names spoken while in camera mode.</string>
 	<key>Meshy3DRenderingAPIKey</key>
 	<string>$(MESHY_3D_RENDERING_API_KEY)</string>
 	<key>OpenAIAPIKey</key>

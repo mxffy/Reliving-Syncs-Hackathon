@@ -16,6 +16,7 @@ private struct CameraObjectPlacement: Identifiable {
   let modelURL: URL
   var position: CGPoint
   var scale: CGFloat = 1
+  var rotation: CGSize = .zero
 }
 
 struct CameraObjectOverlay: View {
@@ -24,18 +25,27 @@ struct CameraObjectOverlay: View {
   @State private var mediaStore = MediaCategoryStore.shared
   @State private var placements: [CameraObjectPlacement] = []
   @State private var objectAssignmentsByTagID: [Int: UUID] = [:]
-  @State private var selectedPlacementID: UUID?
-  @State private var isLibraryOpen = false
+  @State private var trackedObjectScaleByTagID: [Int: CGFloat] = [:]
+  @State private var trackedObjectOffsetByTagID: [Int: CGSize] = [:]
+  @State private var trackedObjectRotationByTagID: [Int: CGSize] = [:]
+  @State private var isEditModeOn = false
+  @State private var personaService = PersonaConversationService()
 
-  private var availableObjects: [CapturedMediaItem] {
+  /// All 3D objects, linked or not. Use this (not `availableObjects`) to look up an already-linked item.
+  private var allObjects: [CapturedMediaItem] {
     mediaStore.objectItems.filter { $0.usdzURL != nil }
   }
 
-  private let trackedObjectNames = [
-    0: "Telephone",
-    1: "Vase",
-    2: "Family Photo",
-  ]
+  /// The person just named aloud, if any — not tag-linked, so it stays with the user rather than a marker.
+  private var activePersona: CapturedMediaItem? {
+    guard let id = personaService.activePersonaID else { return nil }
+    return mediaStore.peopleItems.first { $0.id == id && $0.usdzURL != nil }
+  }
+
+  /// Sidebar-eligible objects: excludes anything currently linked to a tag.
+  private var availableObjects: [CapturedMediaItem] {
+    allObjects.filter { !objectAssignmentsByTagID.values.contains($0.id) }
+  }
 
   init(trackingService: AprilTagTrackingService? = nil) {
     self.trackingService = trackingService
@@ -62,14 +72,19 @@ struct CameraObjectOverlay: View {
                 TrackedCameraObjectView(
                   name: item.name,
                   modelURL: modelURL,
-                  transform: transform
+                  transform: transform,
+                  isEditModeOn: isEditModeOn,
+                  scale: scaleBinding(forTagID: trackedTag.id),
+                  offset: offsetBinding(forTagID: trackedTag.id),
+                  rotation: rotationBinding(forTagID: trackedTag.id),
+                  onDelete: { unlinkObject(fromTagID: trackedTag.id) }
                 )
               }
             }
           }
 
           trackingStatus(for: trackingService)
-            .padding(.top, max(geometry.safeAreaInsets.top, 12))
+            .padding(.top, max(geometry.safeAreaInsets.top, 12) + 60)
             .padding(.leading, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .allowsHitTesting(false)
@@ -80,27 +95,43 @@ struct CameraObjectOverlay: View {
           PlacedCameraObjectView(
             placement: $placement,
             containerSize: geometry.size,
-            isSelected: selectedPlacementID == placement.id,
-            onSelect: { selectedPlacementID = placement.id },
+            isEditModeOn: isEditModeOn,
             onDelete: {
               placements.removeAll { $0.id == placement.id }
-              selectedPlacementID = nil
             }
           )
         }
 
         objectLibrary(containerSize: geometry.size)
-          .padding(.top, max(geometry.safeAreaInsets.top, 12))
+          .padding(.top, max(geometry.safeAreaInsets.top, 12) + 60)
           .padding(.trailing, 16)
           .zIndex(10)
+
+        if let activePersona, let modelURL = activePersona.usdzURL {
+          PersonaOverlayView(modelURL: modelURL)
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .allowsHitTesting(false)
+            .zIndex(9)
+            .transition(.opacity.combined(with: .scale(scale: 0.85)))
+        }
+
+        personaStatus(for: personaService.conversationState)
+          .padding(.bottom, max(geometry.safeAreaInsets.bottom, 12) + 16)
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+          .allowsHitTesting(false)
+          .zIndex(11)
       }
       .frame(width: geometry.size.width, height: geometry.size.height)
       .contentShape(Rectangle())
+      .animation(.spring(response: 0.35, dampingFraction: 0.8), value: personaService.activePersonaID)
+      .animation(.easeInOut(duration: 0.2), value: personaService.conversationState)
+      .onAppear { personaService.start() }
+      .onDisappear { personaService.stop() }
       .dropDestination(for: String.self) { identifiers, location in
         guard
           let identifier = identifiers.first,
           let sourceID = UUID(uuidString: identifier),
-          let item = availableObjects.first(where: { $0.id == sourceID })
+          let item = allObjects.first(where: { $0.id == sourceID })
         else {
           return false
         }
@@ -119,19 +150,19 @@ struct CameraObjectOverlay: View {
     VStack(alignment: .trailing, spacing: 10) {
       Button {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-          isLibraryOpen.toggle()
+          isEditModeOn.toggle()
         }
       } label: {
-        Image(systemName: "house.fill")
+        Image(systemName: "pencil")
           .font(.system(size: 20, weight: .semibold))
           .foregroundStyle(.white)
           .frame(width: 48, height: 48)
           .background(Color.relivingBurgundy, in: Circle())
           .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
       }
-      .accessibilityLabel(isLibraryOpen ? "Close object library" : "Open object library")
+      .accessibilityLabel(isEditModeOn ? "Exit edit mode" : "Enter edit mode")
 
-      if isLibraryOpen {
+      if isEditModeOn {
         VStack(spacing: 10) {
           Text("Objects")
             .font(.system(size: 16, weight: .bold))
@@ -174,13 +205,36 @@ struct CameraObjectOverlay: View {
   }
 
   private func objectForTag(_ tagID: Int) -> CapturedMediaItem? {
-    if let sourceID = objectAssignmentsByTagID[tagID] {
-      return availableObjects.first { $0.id == sourceID }
-    }
-    guard let objectName = trackedObjectNames[tagID] else { return nil }
-    return availableObjects.first {
-      $0.name.compare(objectName, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
-    }
+    guard let sourceID = objectAssignmentsByTagID[tagID] else { return nil }
+    return allObjects.first { $0.id == sourceID }
+  }
+
+  private func scaleBinding(forTagID tagID: Int) -> Binding<CGFloat> {
+    Binding(
+      get: { trackedObjectScaleByTagID[tagID] ?? 1 },
+      set: { trackedObjectScaleByTagID[tagID] = $0 }
+    )
+  }
+
+  private func offsetBinding(forTagID tagID: Int) -> Binding<CGSize> {
+    Binding(
+      get: { trackedObjectOffsetByTagID[tagID] ?? .zero },
+      set: { trackedObjectOffsetByTagID[tagID] = $0 }
+    )
+  }
+
+  private func rotationBinding(forTagID tagID: Int) -> Binding<CGSize> {
+    Binding(
+      get: { trackedObjectRotationByTagID[tagID] ?? .zero },
+      set: { trackedObjectRotationByTagID[tagID] = $0 }
+    )
+  }
+
+  private func unlinkObject(fromTagID tagID: Int) {
+    objectAssignmentsByTagID[tagID] = nil
+    trackedObjectScaleByTagID[tagID] = nil
+    trackedObjectOffsetByTagID[tagID] = nil
+    trackedObjectRotationByTagID[tagID] = nil
   }
 
   private func trackingStatus(for service: AprilTagTrackingService) -> some View {
@@ -220,6 +274,40 @@ struct CameraObjectOverlay: View {
       )
     case .trackingLost:
       return ("exclamationmark.circle", "Tracking lost", Color.relivingIvory)
+    }
+  }
+
+  @ViewBuilder
+  private func personaStatus(for state: PersonaConversationState) -> some View {
+    if let presentation = personaStatusPresentation(for: state) {
+      HStack(spacing: 7) {
+        Image(systemName: presentation.icon)
+          .font(.system(size: 12, weight: .semibold))
+        Text(presentation.text)
+          .font(.system(size: 12, weight: .semibold))
+          .lineLimit(1)
+      }
+      .foregroundStyle(.white.opacity(0.85))
+      .padding(.horizontal, 11)
+      .frame(height: 30)
+      .background(Color.black.opacity(0.5), in: Capsule())
+      .accessibilityLabel(presentation.text)
+      .transition(.opacity)
+    }
+  }
+
+  private func personaStatusPresentation(
+    for state: PersonaConversationState
+  ) -> (icon: String, text: String)? {
+    switch state {
+    case .idle:
+      return nil
+    case .listening:
+      return ("waveform", activePersona == nil ? "Listening for familiar names…" : "Listening…")
+    case .matching:
+      return ("brain", "Recalling a memory…")
+    case .playing:
+      return ("speaker.wave.2.fill", "Playing memory…")
     }
   }
 
@@ -268,9 +356,8 @@ struct CameraObjectOverlay: View {
       position: clampedPosition(position, in: size)
     )
     placements.append(placement)
-    selectedPlacementID = placement.id
     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-      isLibraryOpen = false
+      isEditModeOn = false
     }
     return true
   }
@@ -309,9 +396,8 @@ struct CameraObjectOverlay: View {
 
   private func linkObject(_ item: CapturedMediaItem, toTagID tagID: Int) {
     objectAssignmentsByTagID[tagID] = item.id
-    selectedPlacementID = nil
     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-      isLibraryOpen = false
+      isEditModeOn = false
     }
   }
 
@@ -376,46 +462,125 @@ private struct AprilTagDetectionIndicator: View {
   }
 }
 
+/// Shown when a person's name is heard aloud. Anchored to the viewport (not a tag), so it stays
+/// fixed in front of the camera — as the device moves, the persona moves with it, always in view.
+private struct PersonaOverlayView: View {
+  let modelURL: URL
+
+  var body: some View {
+    ObjectModelSceneView(url: modelURL, pitch: 0, yaw: 0)
+  }
+}
+
 private struct TrackedCameraObjectView: View {
   let name: String
   let modelURL: URL
   let transform: AprilTagViewportTransform
+  let isEditModeOn: Bool
+  @Binding var scale: CGFloat
+  @Binding var offset: CGSize
+  @Binding var rotation: CGSize
+  let onDelete: () -> Void
+
+  @State private var dragOrigin: CGSize?
+  @State private var scaleOrigin: CGFloat?
+  @State private var rotationOrigin: CGSize?
 
   private let baseSize: CGFloat = 170
 
   var body: some View {
-    ObjectModelSceneView(
-      url: modelURL,
-      pitch: Float(transform.pitch),
-      yaw: Float(transform.yaw)
-    )
-    .frame(width: baseSize, height: baseSize)
-    .scaleEffect(min(max(transform.markerSize / 90, 0.35), 3.2))
-    .rotationEffect(.radians(transform.rotation))
-    .position(transform.center)
-    .allowsHitTesting(false)
+    ZStack(alignment: .topTrailing) {
+      // Default upright pose plus any user-driven spin; position/scale follow the tag.
+      ObjectModelSceneView(url: modelURL, pitch: Float(rotation.height), yaw: Float(rotation.width))
+        .frame(width: baseSize, height: baseSize)
+
+      if isEditModeOn {
+        Button(action: onDelete) {
+          Image(systemName: "xmark")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 26, height: 26)
+            .background(Color.relivingBurgundy, in: Circle())
+        }
+        .offset(x: 8, y: -8)
+        .accessibilityLabel("Unlink \(name)")
+      }
+    }
+    .scaleEffect(min(max(transform.markerSize / 90, 0.35), 3.2) * scale)
+    .position(x: transform.center.x + offset.width, y: transform.center.y + offset.height)
+    .contentShape(Rectangle())
+    .simultaneousGesture(dragGesture, including: isEditModeOn ? .all : .none)
+    .simultaneousGesture(resizeGesture, including: isEditModeOn ? .all : .none)
+    .simultaneousGesture(rotateGesture, including: isEditModeOn ? .none : .all)
     .accessibilityLabel("\(name), tracked by tag \(transform.tagID)")
+  }
+
+  private var dragGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .onChanged { value in
+        let origin = dragOrigin ?? offset
+        dragOrigin = origin
+        offset = CGSize(
+          width: origin.width + value.translation.width,
+          height: origin.height + value.translation.height
+        )
+      }
+      .onEnded { _ in
+        dragOrigin = nil
+      }
+  }
+
+  private var resizeGesture: some Gesture {
+    MagnificationGesture()
+      .onChanged { value in
+        let origin = scaleOrigin ?? scale
+        scaleOrigin = origin
+        scale = min(max(origin * value, 0.4), 3)
+      }
+      .onEnded { _ in
+        scaleOrigin = nil
+      }
+  }
+
+  /// Spins the model in place (like a Quick Look preview) without moving it off the tag.
+  private var rotateGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .onChanged { value in
+        let origin = rotationOrigin ?? rotation
+        rotationOrigin = origin
+        rotation = CGSize(
+          width: origin.width + value.translation.width / 60,
+          height: min(max(origin.height + value.translation.height / 60, -1.4), 1.4)
+        )
+      }
+      .onEnded { _ in
+        rotationOrigin = nil
+      }
   }
 }
 
 private struct PlacedCameraObjectView: View {
   @Binding var placement: CameraObjectPlacement
   let containerSize: CGSize
-  let isSelected: Bool
-  let onSelect: () -> Void
+  let isEditModeOn: Bool
   let onDelete: () -> Void
 
   @State private var dragOrigin: CGPoint?
   @State private var scaleOrigin: CGFloat?
+  @State private var rotationOrigin: CGSize?
 
   private let baseSize: CGFloat = 170
 
   var body: some View {
     ZStack(alignment: .topTrailing) {
-      ObjectModelSceneView(url: placement.modelURL)
-        .frame(width: baseSize, height: baseSize)
+      ObjectModelSceneView(
+        url: placement.modelURL,
+        pitch: Float(placement.rotation.height),
+        yaw: Float(placement.rotation.width)
+      )
+      .frame(width: baseSize, height: baseSize)
 
-      if isSelected {
+      if isEditModeOn {
         Button(action: onDelete) {
           Image(systemName: "xmark")
             .font(.system(size: 11, weight: .bold))
@@ -430,16 +595,15 @@ private struct PlacedCameraObjectView: View {
     .scaleEffect(placement.scale)
     .position(placement.position)
     .contentShape(Rectangle())
-    .onTapGesture(perform: onSelect)
-    .simultaneousGesture(dragGesture)
-    .simultaneousGesture(resizeGesture)
+    .simultaneousGesture(dragGesture, including: isEditModeOn ? .all : .none)
+    .simultaneousGesture(resizeGesture, including: isEditModeOn ? .all : .none)
+    .simultaneousGesture(rotateGesture, including: isEditModeOn ? .none : .all)
     .accessibilityLabel(placement.name)
   }
 
   private var dragGesture: some Gesture {
     DragGesture(minimumDistance: 1)
       .onChanged { value in
-        onSelect()
         let origin = dragOrigin ?? placement.position
         dragOrigin = origin
         placement.position = clampedPosition(
@@ -457,7 +621,6 @@ private struct PlacedCameraObjectView: View {
   private var resizeGesture: some Gesture {
     MagnificationGesture()
       .onChanged { value in
-        onSelect()
         let origin = scaleOrigin ?? placement.scale
         scaleOrigin = origin
         placement.scale = min(max(origin * value, 0.45), 2.5)
@@ -465,6 +628,22 @@ private struct PlacedCameraObjectView: View {
       }
       .onEnded { _ in
         scaleOrigin = nil
+      }
+  }
+
+  /// Spins the model in place (like a Quick Look preview) without moving its position.
+  private var rotateGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .onChanged { value in
+        let origin = rotationOrigin ?? placement.rotation
+        rotationOrigin = origin
+        placement.rotation = CGSize(
+          width: origin.width + value.translation.width / 60,
+          height: min(max(origin.height + value.translation.height / 60, -1.4), 1.4)
+        )
+      }
+      .onEnded { _ in
+        rotationOrigin = nil
       }
   }
 
@@ -485,6 +664,7 @@ private struct ObjectModelSceneView: UIViewRepresentable {
   let url: URL
   var pitch: Float = 0
   var yaw: Float = 0
+  var roll: Float = 0
 
   func makeUIView(context: Context) -> SCNView {
     let sceneView = SCNView()
@@ -498,7 +678,7 @@ private struct ObjectModelSceneView: UIViewRepresentable {
 
   func updateUIView(_ uiView: SCNView, context: Context) {
     uiView.scene?.rootNode.childNode(withName: "cameraObjectModel", recursively: false)?.eulerAngles =
-      SCNVector3(-0.12 + pitch, 0.28 + yaw, 0)
+      SCNVector3(-0.18 + pitch, 0.5 + yaw, roll)
   }
 
   private func makeScene() -> SCNScene {
@@ -526,7 +706,7 @@ private struct ObjectModelSceneView: UIViewRepresentable {
       -(bounds.min.y + bounds.max.y) / 2 * modelContainer.scale.y,
       -(bounds.min.z + bounds.max.z) / 2 * modelContainer.scale.z
     )
-    modelContainer.eulerAngles = SCNVector3(-0.12 + pitch, 0.28 + yaw, 0)
+    modelContainer.eulerAngles = SCNVector3(-0.18 + pitch, 0.5 + yaw, roll)
     scene.rootNode.addChildNode(modelContainer)
 
     let cameraNode = SCNNode()
@@ -540,14 +720,22 @@ private struct ObjectModelSceneView: UIViewRepresentable {
     let keyLight = SCNNode()
     keyLight.light = SCNLight()
     keyLight.light?.type = .omni
-    keyLight.light?.intensity = 1_000
+    keyLight.light?.intensity = 1_200
     keyLight.position = SCNVector3(2, 3, 4)
     scene.rootNode.addChildNode(keyLight)
+
+    // Low-angle fill light from the opposite side to reveal depth/shading the key light misses.
+    let fillLight = SCNNode()
+    fillLight.light = SCNLight()
+    fillLight.light?.type = .omni
+    fillLight.light?.intensity = 350
+    fillLight.position = SCNVector3(-3, -1, 3)
+    scene.rootNode.addChildNode(fillLight)
 
     let ambientLight = SCNNode()
     ambientLight.light = SCNLight()
     ambientLight.light?.type = .ambient
-    ambientLight.light?.intensity = 650
+    ambientLight.light?.intensity = 450
     scene.rootNode.addChildNode(ambientLight)
 
     return scene

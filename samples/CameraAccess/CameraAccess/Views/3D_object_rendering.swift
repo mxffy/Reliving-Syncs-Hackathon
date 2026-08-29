@@ -47,6 +47,31 @@ enum MediaCategoryKind {
   }
 }
 
+/// A real recorded memory clip belonging to a persona. Never synthesized — only authentic uploaded
+/// or recorded audio is ever played back. `embedding` is the precomputed sentence embedding of
+/// `transcript`, used for semantic retrieval against live speech.
+struct MemoryAudioClip: Identifiable, Equatable {
+  let id: UUID
+  var audioURL: URL
+  var transcript: String
+  var embedding: [Float]?
+  var title: String?
+
+  init(
+    id: UUID = UUID(),
+    audioURL: URL,
+    transcript: String,
+    embedding: [Float]? = nil,
+    title: String? = nil
+  ) {
+    self.id = id
+    self.audioURL = audioURL
+    self.transcript = transcript
+    self.embedding = embedding
+    self.title = title
+  }
+}
+
 /// A captured photo plus its generated 3D model, once available.
 struct CapturedMediaItem: Identifiable {
   let id: UUID
@@ -55,6 +80,7 @@ struct CapturedMediaItem: Identifiable {
   var description: String
   var usdzURL: URL?
   var isDefault = false
+  var audioClips: [MemoryAudioClip] = []
 }
 
 /// Holds captured photos for each recognition category.
@@ -68,7 +94,7 @@ final class MediaCategoryStore {
 
   private init(bundle: Bundle = .main) {
     objectItems = Self.telephoneItem(bundle: bundle).map { [$0] } ?? []
-    peopleItems = Self.paulItem(bundle: bundle).map { [$0] } ?? []
+    peopleItems = Self.davidItem(bundle: bundle).map { [$0] } ?? []
   }
 
   private static func telephoneItem(bundle: Bundle) -> CapturedMediaItem? {
@@ -89,10 +115,10 @@ final class MediaCategoryStore {
     )
   }
 
-  private static func paulItem(bundle: Bundle) -> CapturedMediaItem? {
+  private static func davidItem(bundle: Bundle) -> CapturedMediaItem? {
     guard
-      let modelURL = bundle.url(forResource: "Paul", withExtension: "usdz"),
-      let photoURL = bundle.url(forResource: "Paul", withExtension: "png"),
+      let modelURL = bundle.url(forResource: "David", withExtension: "usdz"),
+      let photoURL = bundle.url(forResource: "David", withExtension: "png"),
       let photo = UIImage(contentsOfFile: photoURL.path)
     else {
       return nil
@@ -100,11 +126,30 @@ final class MediaCategoryStore {
     return CapturedMediaItem(
       id: UUID(uuidString: "47B3D36C-B18D-41DA-B58D-03B6285DC656")!,
       photo: photo,
-      name: "Paul",
-      description: "Paul",
+      name: "David",
+      description: "David",
       usdzURL: modelURL,
-      isDefault: true
+      isDefault: true,
+      audioClips: defaultDavidAudioClips(bundle: bundle)
     )
+  }
+
+  /// Sample voice memories bundled for the David persona, with embeddings precomputed once at launch.
+  private static func defaultDavidAudioClips(bundle: Bundle) -> [MemoryAudioClip] {
+    let transcriptsByResource: [(resource: String, transcript: String, title: String)] = [
+      ("telephone", "That telephone has been gathering dust for a bit now, I better dust it off", "The old telephone"),
+      ("golf", "Oh I've had quite a long day out playing golf with Jerred and his brother", "Golf day"),
+    ]
+    return transcriptsByResource.compactMap { entry in
+      guard let audioURL = bundle.url(forResource: entry.resource, withExtension: "mp3") else { return nil }
+      let embedding = SentenceEmbeddingService.shared.embed(entry.transcript)
+      return MemoryAudioClip(
+        audioURL: audioURL,
+        transcript: entry.transcript,
+        embedding: embedding,
+        title: entry.title
+      )
+    }
   }
 }
 
@@ -326,6 +371,13 @@ struct CapturedItemDetailView: View {
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
+
+          if category == .person {
+            VoiceMemoriesEditor(audioClips: $item.audioClips)
+              .onChange(of: item.audioClips) { _, _ in
+                onUpdate(item)
+              }
+          }
         }
         .padding(24)
       }
