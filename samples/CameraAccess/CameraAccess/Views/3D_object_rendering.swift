@@ -95,7 +95,7 @@ final class MediaCategoryStore {
 
   private init(bundle: Bundle = .main) {
     objectItems = [Self.telephoneItem(bundle: bundle), Self.vaseItem(bundle: bundle)].compactMap { $0 }
-    peopleItems = Self.davidItem(bundle: bundle).map { [$0] } ?? []
+    peopleItems = [Self.davidItem(bundle: bundle), Self.aliceItem(bundle: bundle)].compactMap { $0 }
   }
 
   private static func telephoneItem(bundle: Bundle) -> CapturedMediaItem? {
@@ -158,6 +158,43 @@ final class MediaCategoryStore {
     let transcriptsByResource: [(resource: String, transcript: String, title: String)] = [
       ("telephone", "That telephone has been gathering dust for a bit now, I better dust it off", "The old telephone"),
       ("golf", "Oh I've had quite a long day out playing golf with Jerred and his brother", "Golf day"),
+    ]
+    return transcriptsByResource.compactMap { entry in
+      guard let audioURL = bundle.url(forResource: entry.resource, withExtension: "mp3") else { return nil }
+      let embedding = SentenceEmbeddingService.shared.embed(entry.transcript)
+      return MemoryAudioClip(
+        audioURL: audioURL,
+        transcript: entry.transcript,
+        embedding: embedding,
+        title: entry.title
+      )
+    }
+  }
+
+  private static func aliceItem(bundle: Bundle) -> CapturedMediaItem? {
+    guard
+      let modelURL = bundle.url(forResource: "Angelica", withExtension: "usdz"),
+      let photoURL = bundle.url(forResource: "alice_new", withExtension: "png"),
+      let photo = UIImage(contentsOfFile: photoURL.path)
+    else {
+      return nil
+    }
+    return CapturedMediaItem(
+      id: UUID(uuidString: "C1A11CE0-2A1D-4B7E-9F0A-6D1E9B8C2F3A")!,
+      photo: photo,
+      name: "Alice",
+      description: "Alice",
+      usdzURL: modelURL,
+      isDefault: true,
+      audioClips: defaultAliceAudioClips(bundle: bundle)
+    )
+  }
+
+  /// Sample voice memories bundled for the Alice persona, with embeddings precomputed once at launch.
+  private static func defaultAliceAudioClips(bundle: Bundle) -> [MemoryAudioClip] {
+    let transcriptsByResource: [(resource: String, transcript: String, title: String)] = [
+      ("uni", "Hi Grandma! Uni's been really busy lately, but I'm doing well. I can't wait to tell you all about it when I visit.", "Busy at uni"),
+      ("garden", "Grandma, I was thinking about your garden today. I still remember helping you water the roses when I was little.", "Your garden"),
     ]
     return transcriptsByResource.compactMap { entry in
       guard let audioURL = bundle.url(forResource: entry.resource, withExtension: "mp3") else { return nil }
@@ -295,8 +332,8 @@ struct CategorySectionView: View {
     .sheet(item: $activePickerSource) { source in
       CategoryImagePickerView(sourceType: source) { image in
         activePickerSource = nil
-        // All camera captures (Objects and People) are taken in black and white.
-        pendingImage = source == .camera ? monochromeImage(from: image) : image
+        // Objects photographed with the camera are captured in black and white.
+        pendingImage = category == .object && source == .camera ? monochromeImage(from: image) : image
       }
       .ignoresSafeArea()
     }

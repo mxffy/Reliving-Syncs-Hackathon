@@ -55,6 +55,28 @@ struct CameraObjectOverlay: View {
     return mediaStore.peopleItems.first { $0.id == id && $0.usdzURL != nil }
   }
 
+  /// Alice's scan is a head/bust only (see `MediaCategoryStore.aliceItem`), unlike David's full-body
+  /// model — the shared "crop a full body down to the face" framing below crops a head-only model's
+  /// chin/hair instead, so give her a much gentler, near-centered framing tuned for that proportion.
+  private static let headOnlyPersonaIDs: Set<UUID> = [UUID(uuidString: "C1A11CE0-2A1D-4B7E-9F0A-6D1E9B8C2F3A")!]
+
+  private func personaFraming(for persona: CapturedMediaItem) -> (distance: Float, horizontal: Float, vertical: Float) {
+    if Self.headOnlyPersonaIDs.contains(persona.id) {
+      return (distance: 3.2, horizontal: 0, vertical: 0)
+    }
+    return (distance: 1.7, horizontal: 0.1, vertical: -0.45)
+  }
+
+  /// Alice's starting pose before any user gesture: bigger and lower on screen, and turned a
+  /// further half-turn since her scan's forward axis doesn't match the shared `baseYaw` flip
+  /// tuned for David (a full \u03c0 turn needs no sign-guessing \u2014 it lands the same either way).
+  private func personaDefaultTransform(for id: UUID) -> (scale: CGFloat, offset: CGSize, rotationWidth: CGFloat) {
+    if Self.headOnlyPersonaIDs.contains(id) {
+      return (scale: 1.15, offset: CGSize(width: 0, height: 140), rotationWidth: .pi)
+    }
+    return (scale: 1, offset: .zero, rotationWidth: 0)
+  }
+
   /// Sidebar-eligible objects: excludes anything currently linked to a tag.
   private var availableObjects: [CapturedMediaItem] {
     allObjects.filter { !placementStore.objectAssignmentsByTagID.values.contains($0.id) }
@@ -63,6 +85,12 @@ struct CameraObjectOverlay: View {
   /// Placing/linking an object requires a currently-tracked tag with no object linked yet.
   private var hasUnlinkedTrackedTag: Bool {
     trackingService?.trackedTags.contains { objectForTag($0.id) == nil } ?? false
+  }
+
+  /// IDs of linked objects currently visible via a tracked AprilTag — feeds the persona service's
+  /// hardcoded "Mark" + object voice trigger.
+  private var viewedObjectIDs: Set<UUID> {
+    Set((trackingService?.trackedTags ?? []).compactMap { objectForTag($0.id)?.id })
   }
 
   init(trackingService: AprilTagTrackingService? = nil) {
@@ -126,9 +154,13 @@ struct CameraObjectOverlay: View {
           .zIndex(10)
 
         if let activePersona, let modelURL = activePersona.usdzURL {
+          let framing = personaFraming(for: activePersona)
           PersonaOverlayView(
             modelURL: modelURL,
             isEditModeOn: isEditModeOn,
+            cameraDistance: framing.distance,
+            horizontalFramingOffset: framing.horizontal,
+            verticalFramingOffset: framing.vertical,
             scale: personaScaleBinding(forID: activePersona.id),
             offset: personaOffsetBinding(forID: activePersona.id),
             rotation: personaRotationBinding(forID: activePersona.id)
@@ -148,8 +180,14 @@ struct CameraObjectOverlay: View {
       .contentShape(Rectangle())
       .animation(.spring(response: 0.35, dampingFraction: 0.8), value: personaService.activePersonaID)
       .animation(.easeInOut(duration: 0.2), value: personaService.conversationState)
-      .onAppear { personaService.start() }
+      .onAppear {
+        personaService.start()
+        personaService.currentlyViewedObjectIDs = viewedObjectIDs
+      }
       .onDisappear { personaService.stop() }
+      .onChange(of: viewedObjectIDs) { _, ids in
+        personaService.currentlyViewedObjectIDs = ids
+      }
       .dropDestination(for: String.self) { identifiers, location in
         guard
           let identifier = identifiers.first,
@@ -263,21 +301,24 @@ struct CameraObjectOverlay: View {
 
   private func personaScaleBinding(forID id: UUID) -> Binding<CGFloat> {
     Binding(
-      get: { placementStore.personaScaleByID[id] ?? 1 },
+      get: { placementStore.personaScaleByID[id] ?? personaDefaultTransform(for: id).scale },
       set: { placementStore.personaScaleByID[id] = $0 }
     )
   }
 
   private func personaOffsetBinding(forID id: UUID) -> Binding<CGSize> {
     Binding(
-      get: { placementStore.personaOffsetByID[id] ?? .zero },
+      get: { placementStore.personaOffsetByID[id] ?? personaDefaultTransform(for: id).offset },
       set: { placementStore.personaOffsetByID[id] = $0 }
     )
   }
 
   private func personaRotationBinding(forID id: UUID) -> Binding<CGSize> {
     Binding(
-      get: { placementStore.personaRotationByID[id] ?? .zero },
+      get: {
+        placementStore.personaRotationByID[id]
+          ?? CGSize(width: personaDefaultTransform(for: id).rotationWidth, height: 0)
+      },
       set: { placementStore.personaRotationByID[id] = $0 }
     )
   }
@@ -516,6 +557,9 @@ private struct AprilTagDetectionIndicator: View {
 private struct PersonaOverlayView: View {
   let modelURL: URL
   let isEditModeOn: Bool
+  var cameraDistance: Float = 1.7
+  var horizontalFramingOffset: Float = 0.1
+  var verticalFramingOffset: Float = -0.45
   @Binding var scale: CGFloat
   @Binding var offset: CGSize
   @Binding var rotation: CGSize
@@ -534,10 +578,9 @@ private struct PersonaOverlayView: View {
       yaw: Float(rotation.width),
       basePitch: 0,
       baseYaw: .pi,
-      cameraDistance: 1.3,
-      horizontalFramingOffset: 0.1,
-      // Less aggressive than a pure face-only crop, so the top of the head isn't clipped.
-      verticalFramingOffset: -0.45,
+      cameraDistance: cameraDistance,
+      horizontalFramingOffset: horizontalFramingOffset,
+      verticalFramingOffset: verticalFramingOffset,
       lightingIntensityMultiplier: 0.4
     )
     .scaleEffect(scale)

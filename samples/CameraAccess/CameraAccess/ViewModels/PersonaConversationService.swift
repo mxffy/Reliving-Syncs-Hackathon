@@ -43,6 +43,9 @@ final class PersonaConversationService {
   private(set) var conversationState: PersonaConversationState = .idle
   private(set) var activePersonaID: UUID?
   private(set) var lastError: String?
+  /// IDs of default objects currently linked to a visible, tracked AprilTag; kept in sync by
+  /// `CameraObjectOverlay` and consulted only by the hardcoded "Mark" + object voice trigger.
+  var currentlyViewedObjectIDs: Set<UUID> = []
   /// The most recent live transcript heard, so the UI can show it as proof the mic is picking up speech.
   private(set) var liveTranscript: String = ""
 
@@ -60,12 +63,34 @@ final class PersonaConversationService {
   private let retrievalCooldown: TimeInterval = 1.5
 
   private static let farewellWords: Set<String> = ["bye", "goodbye"]
+  /// Phonetic code for the hardcoded trigger name, computed once.
+  private static let markSoundex = soundex("Mark")
+  /// Fixed IDs of the default Telephone/Vase objects (see `MediaCategoryStore`), mapped to the
+  /// bundled clip resource name to play directly when "Mark" is heard while viewing that object.
+  private static let hardcodedObjectAudioResource: [UUID: String] = [
+    UUID(uuidString: "4E4A786B-7911-44B7-95D6-997B6AD2DD35")!: "telephone",
+    UUID(uuidString: "9D3C7C7B-6A3F-4B3E-9C8F-2B8E5A6C1D2E")!: "vase",
+  ]
   /// Excluded when scoring keyword overlap, so retrieval boosts on real topic words ("golf") not filler words.
   private static let overlapStopwords: Set<String> = [
     "a", "an", "the", "i", "you", "he", "she", "it", "we", "they", "is", "am", "are", "was", "were",
     "do", "does", "did", "have", "has", "had", "go", "going", "went", "and", "or", "but", "with",
     "to", "of", "in", "on", "at", "for", "today", "yesterday", "quite", "out", "up", "down", "so",
     "his", "her", "their", "my", "your", "our", "that", "this", "these", "those", "been", "being", "be",
+    // apostrophe-split contraction remnants ("i'm" -> "i","m"; "can't" -> "can","t"; "you're" -> "you","re")
+    "s", "t", "m", "d", "re", "ll", "ve", "will", "me",
+    // generic conversational filler shared across every clip's own transcript, so it never masquerades
+    // as a distinguishing topic word (verified empirically: without these, "hi grandma how are you" and
+    // "I am really tired" both falsely out-scored the similarity threshold via accidental word overlap)
+    "really", "well", "busy", "tired", "long", "little", "good", "still", "much", "very", "just",
+    "old", "better", "lately", "now", "all", "when", "wait", "tell", "visit", "visited", "grandma", "hi",
+  ]
+
+  /// Synonyms that should count as the same topic word for keyword-overlap scoring, so a query
+  /// mentioning "college"/"university" still boosts a clip whose transcript only literally says "uni".
+  private static let topicWordSynonyms: [String: String] = [
+    "college": "uni",
+    "university": "uni",
   ]
 
   @ObservationIgnored private let mediaStore: MediaCategoryStore
@@ -81,6 +106,7 @@ final class PersonaConversationService {
   @ObservationIgnored private var stabilizationTask: Task<Void, Never>?
   @ObservationIgnored private var lastProcessedQueryTranscript = ""
   @ObservationIgnored private var lastRetrievalAt: Date?
+  @ObservationIgnored private var lastHardcodedTriggerObjectID: UUID?
 
   init(
     mediaStore: MediaCategoryStore = .shared,
@@ -209,6 +235,9 @@ final class PersonaConversationService {
   private func restartIfNeeded() {
     guard wantsListening, let speechRecognizer else { return }
     recognitionRequest?.endAudio()
+    // A finalized result marks a natural pause; allow the hardcoded object trigger to fire
+    // again on the next utterance instead of staying suppressed for the rest of the session.
+    lastHardcodedTriggerObjectID = nil
     startRecognitionTask(with: speechRecognizer)
   }
 
@@ -228,12 +257,41 @@ final class PersonaConversationService {
     // audio and recursively trigger another response.
     guard conversationState != .playing else { return }
 
+    if attemptHardcodedObjectTrigger(words: words) {
+      return
+    }
+
     if activePersonaID == nil, let matched = matchPersonaName(in: words) {
       activatePersona(matched)
     }
 
     guard activePersonaID != nil else { return }
     scheduleRetrieval(for: raw)
+  }
+
+  /// Hardcoded shortcut, independent of the persona/semantic-retrieval pipeline: hearing "Mark"
+  /// while a default object is linked, tracked, and in view plays that object's fixed clip directly.
+  private func attemptHardcodedObjectTrigger(words: [String]) -> Bool {
+    guard words.contains(where: { Self.soundex($0) == Self.markSoundex }) else { return false }
+    guard
+      let match = currentlyViewedObjectIDs
+        .compactMap({ id in Self.hardcodedObjectAudioResource[id].map { (id: id, resource: $0) } })
+        .first,
+      match.id != lastHardcodedTriggerObjectID,
+      let audioURL = Bundle.main.url(forResource: match.resource, withExtension: "mp3")
+    else {
+      return false
+    }
+    lastHardcodedTriggerObjectID = match.id
+    playbackService.stop()
+    conversationState = .playing
+    playbackService.play(url: audioURL) { [weak self] in
+      Task { @MainActor in
+        guard let self, self.conversationState == .playing else { return }
+        self.conversationState = self.wantsListening ? .listening : .idle
+      }
+    }
+    return true
   }
 
   private func matchPersonaName(in words: [String]) -> CapturedMediaItem? {
@@ -336,13 +394,20 @@ final class PersonaConversationService {
   // MARK: - Tokenizing / phonetic matching
 
   /// Rewards clips that literally share a topic word with the query (e.g. "golf"), since Apple's
-  /// on-device sentence embedding alone often under-scores true paraphrase matches.
+  /// on-device sentence embedding alone often under-scores true paraphrase matches -- short queries
+  /// like "are you at uni" can score as low as ~0.13 similarity, so a single unique topic word needs
+  /// to be enough on its own to clear `similarityThreshold` (validated empirically against all
+  /// current clips before raising this weight, to avoid over-rewarding coincidental overlaps).
   private static func keywordOverlapBonus(query: String, transcript: String) -> Float {
-    let queryWords = Set(tokenize(query)).subtracting(overlapStopwords)
-    let transcriptWords = Set(tokenize(transcript)).subtracting(overlapStopwords)
+    let queryWords = canonicalizeTopicWords(tokenize(query)).subtracting(overlapStopwords)
+    let transcriptWords = canonicalizeTopicWords(tokenize(transcript)).subtracting(overlapStopwords)
     let shared = queryWords.intersection(transcriptWords).count
     guard shared > 0 else { return 0 }
-    return min(Float(shared) * 0.15, 0.3)
+    return min(Float(shared) * 0.3, 0.4)
+  }
+
+  private static func canonicalizeTopicWords(_ words: [String]) -> Set<String> {
+    Set(words.map { topicWordSynonyms[$0] ?? $0 })
   }
 
   private static func tokenize(_ text: String) -> [String] {

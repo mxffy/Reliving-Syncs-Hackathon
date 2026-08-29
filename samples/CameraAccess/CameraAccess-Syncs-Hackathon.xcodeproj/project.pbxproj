@@ -58,6 +58,13 @@
 		F0CA00142F97000D00000001 /* Telephone.png in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00132F97000D00000001 /* Telephone.png */; };
 		FEEE001F2F95000100000010 /* VASE_VICTORIAN_ERA.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE001E2F95000100000010 /* VASE_VICTORIAN_ERA.usdz */; };
 		FEEE00212F95000100000011 /* VASE_VICTORIAN_ERA.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00202F95000100000011 /* VASE_VICTORIAN_ERA.png */; };
+		FEEE00232F95000100000012 /* alice.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00222F95000100000012 /* alice.png */; };
+		FEEE00252F95000100000013 /* Kim.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00242F95000100000013 /* Kim.usdz */; };
+		FEEE00272F95000100000014 /* garden.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00262F95000100000014 /* garden.mp3 */; };
+		FEEE00292F95000100000015 /* uni.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00282F95000100000015 /* uni.mp3 */; };
+		FEEE002B2F95000100000016 /* vase.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE002A2F95000100000016 /* vase.mp3 */; };
+		FEEE002D2F95000100000017 /* Angelica.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE002C2F95000100000017 /* Angelica.usdz */; };
+		FEEE002F2F95000100000018 /* alice_new.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE002E2F95000100000018 /* alice_new.png */; };
 		F0CA00162F97000F00000001 /* AprilTagTrackingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */; };
 		F0CA00192F97001200000001 /* SwiftAprilTag in Frameworks */ = {isa = PBXBuildFile; productRef = F0CA00182F97001100000001 /* SwiftAprilTag */; };
 		FEEE00012F95000100000001 /* DeviceSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00002F95000100000001 /* DeviceSessionManager.swift */; };
@@ -149,6 +156,13 @@
 		FEEE001C2F9500010000000F /* david_photograph.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = david_photograph.png; sourceTree = "<group>"; };
 		FEEE001E2F95000100000010 /* VASE_VICTORIAN_ERA.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = VASE_VICTORIAN_ERA.usdz; sourceTree = "<group>"; };
 		FEEE00202F95000100000011 /* VASE_VICTORIAN_ERA.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = VASE_VICTORIAN_ERA.png; sourceTree = "<group>"; };
+		FEEE00222F95000100000012 /* alice.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = alice.png; sourceTree = "<group>"; };
+		FEEE00242F95000100000013 /* Kim.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Kim.usdz; sourceTree = "<group>"; };
+		FEEE00262F95000100000014 /* garden.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = garden.mp3; sourceTree = "<group>"; };
+		FEEE00282F95000100000015 /* uni.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = uni.mp3; sourceTree = "<group>"; };
+		FEEE002A2F95000100000016 /* vase.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = vase.mp3; sourceTree = "<group>"; };
+		FEEE002C2F95000100000017 /* Angelica.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Angelica.usdz; sourceTree = "<group>"; };
+		FEEE002E2F95000100000018 /* alice_new.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = alice_new.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -265,6 +279,13 @@
 				FEEE00202F95000100000011 /* VASE_VICTORIAN_ERA.png */,
 				FEEE00122F9500010000000A /* golf.mp3 */,
 				FEEE00162F9500010000000C /* telephone.mp3 */,
+				FEEE00222F95000100000012 /* alice.png */,
+				FEEE00242F95000100000013 /* Kim.usdz */,
+				FEEE00262F95000100000014 /* garden.mp3 */,
+				FEEE00282F95000100000015 /* uni.mp3 */,
+				FEEE002A2F95000100000016 /* vase.mp3 */,
+				FEEE002C2F95000100000017 /* Angelica.usdz */,
+				FEEE002E2F95000100000018 /* alice_new.png */,
 				F0CA00112F97000C00000001 /* RemiLoading.mp4 */,
 				F0CA00132F97000D00000001 /* Telephone.png */,
 				8FD96B782E6F0A9800F56AB1 /* CameraAccess.entitlements */,
@@ -444,6 +465,13 @@
 				FEEE00172F9500010000000C /* telephone.mp3 in Resources */,
 				FEEE001F2F95000100000010 /* VASE_VICTORIAN_ERA.usdz in Resources */,
 				FEEE00212F95000100000011 /* VASE_VICTORIAN_ERA.png in Resources */,
+				FEEE00232F95000100000012 /* alice.png in Resources */,
+				FEEE00252F95000100000013 /* Kim.usdz in Resources */,
+				FEEE00272F95000100000014 /* garden.mp3 in Resources */,
+				FEEE00292F95000100000015 /* uni.mp3 in Resources */,
+				FEEE002B2F95000100000016 /* vase.mp3 in Resources */,
+				FEEE002D2F95000100000017 /* Angelica.usdz in Resources */,
+				FEEE002F2F95000100000018 /* alice_new.png in Resources */,
 				F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */,
 				F0CA00142F97000D00000001 /* Telephone.png in Resources */,
 			);
