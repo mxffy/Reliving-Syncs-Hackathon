@@ -20,7 +20,7 @@ import Foundation
 import SwiftUI
 
 struct MockDeviceKitView: View {
-  @Bindable var viewModel: MockDeviceKitViewModel
+  var viewModel: ViewModel
 
   var body: some View {
     NavigationView {
@@ -29,7 +29,7 @@ struct MockDeviceKitView: View {
           CardView {
             VStack(spacing: 6) {
               HStack {
-                Text("MockDeviceKit")
+                Text("Mock Device Kit")
                   .font(.headline)
                   .fontWeight(.bold)
                   .foregroundStyle(.primary)
@@ -42,7 +42,7 @@ struct MockDeviceKitView: View {
                 }
               }
 
-              Text("This screen simulates devices and mocks their capabilities and states.")
+              Text("This screen handles simulating devices, mocking capabilities, and states")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -54,7 +54,7 @@ struct MockDeviceKitView: View {
                   viewModel.disable()
                 }
 
-                MockDeviceKitButton("Pair Ray-Ban Meta", disabled: viewModel.cardViewModels.count >= 3) {
+                MockDeviceKitButton("Pair RayBan Meta", disabled: viewModel.cardViewModels.count >= 3) {
                   viewModel.pairGlasses()
                 }
               } else {
@@ -82,13 +82,6 @@ struct MockDeviceKitView: View {
         .padding()
       }
       .background(Color(.systemGroupedBackground))
-      .alert("Error", isPresented: $viewModel.showError) {
-        Button("OK") {
-          viewModel.dismissError()
-        }
-      } message: {
-        Text(viewModel.errorMessage)
-      }
     }
   }
 }

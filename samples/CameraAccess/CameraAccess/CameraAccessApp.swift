@@ -25,22 +25,67 @@ import MWDATMockDevice
 
 @main
 struct CameraAccessApp: App {
-  #if DEBUG
-  // Debug menu for simulating device connections during development. The
-  // ladybug button toggles `showDebugMenu`; the sheet hosts the mock device kit.
-  @State private var showDebugMenu = false
-  @State private var mockDeviceKitViewModel = MockDeviceKitViewModel(mockDeviceKit: MockDeviceKit.shared)
-  #endif
-  private let wearables: WearablesInterface
-  @State private var wearablesViewModel: WearablesViewModel
+  var body: some Scene {
+    WindowGroup {
+      CameraAccessRootView()
+    }
+  }
+}
 
-  init() {
+private struct CameraAccessRootView: View {
+  @State private var wearablesViewModel: WearablesViewModel?
+  @State private var configurationError: String?
+
+  var body: some View {
+    Group {
+      if let wearablesViewModel {
+        CameraAccessContentView(
+          wearables: Wearables.shared,
+          viewModel: wearablesViewModel
+        )
+      } else {
+        Color.white
+          .ignoresSafeArea()
+          .overlay {
+            if configurationError == nil {
+              ProgressView()
+            }
+          }
+      }
+    }
+    .task {
+      await configureWearables()
+    }
+    .alert("Error", isPresented: configurationErrorBinding) {
+      Button("OK") {
+        configurationError = nil
+      }
+    } message: {
+      Text(configurationError ?? "Wearables SDK configuration failed.")
+    }
+  }
+
+  private var configurationErrorBinding: Binding<Bool> {
+    Binding(
+      get: { configurationError != nil },
+      set: { isPresented in
+        if !isPresented {
+          configurationError = nil
+        }
+      }
+    )
+  }
+
+  private func configureWearables() async {
+    guard wearablesViewModel == nil, configurationError == nil else { return }
+
     do {
-      try Wearables.configure()
+      try await Task.detached(priority: .userInitiated) {
+        try Wearables.configure()
+      }.value
     } catch {
-      #if DEBUG
-      NSLog("[CameraAccess] Failed to configure Wearables SDK: \(error)")
-      #endif
+      configurationError = error.localizedDescription
+      return
     }
 
     #if DEBUG
@@ -51,44 +96,32 @@ struct CameraAccessApp: App {
 
       let portFilePath = ProcessInfo.processInfo.environment["MWDAT_TEST_SERVER_PORT_FILE"]
       Task {
-        do {
-          _ = try await MockDeviceKit.shared.startTestServer(portFilePath: portFilePath)
-        } catch {
-          // pika27: errors are not propagated from this unstructured task
-        }
+        try await MockDeviceKit.shared.startTestServer(portFilePath: portFilePath)
       }
     }
     #endif
 
     let wearables = Wearables.shared
-    self.wearables = wearables
-    self._wearablesViewModel = State(wrappedValue: WearablesViewModel(wearables: wearables))
+    wearablesViewModel = WearablesViewModel(wearables: wearables)
   }
+}
 
-  var body: some Scene {
-    WindowGroup {
-      // Main app view with access to the shared Wearables SDK instance
-      // The Wearables.shared singleton provides the core DAT API
-      MainAppView(wearables: Wearables.shared, viewModel: wearablesViewModel)
-        // Show error alerts for view model failures
-        .alert("Something went wrong", isPresented: $wearablesViewModel.showError) {
+private struct CameraAccessContentView: View {
+  let wearables: WearablesInterface
+  @Bindable var viewModel: WearablesViewModel
+
+  var body: some View {
+    Group {
+      MainAppView(wearables: wearables, viewModel: viewModel)
+        .alert("Error", isPresented: $viewModel.showError) {
           Button("OK") {
-            wearablesViewModel.dismissError()
+            viewModel.dismissError()
           }
         } message: {
-          Text(wearablesViewModel.errorMessage)
+          Text(viewModel.errorMessage)
         }
-        #if DEBUG
-      .sheet(isPresented: $showDebugMenu) {
-        MockDeviceKitView(viewModel: mockDeviceKitViewModel)
-      }
-      .overlay {
-        DebugMenuView(showDebugMenu: $showDebugMenu)
-      }
-        #endif
 
-      // Registration view handles the flow for connecting to the glasses via Meta AI
-      RegistrationView(viewModel: wearablesViewModel)
+      RegistrationView(viewModel: viewModel)
     }
   }
 }

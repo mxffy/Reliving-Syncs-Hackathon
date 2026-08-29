@@ -8,21 +8,18 @@
 
 @testable import CameraAccess
 import Foundation
-import MWDATCamera
 import MWDATCore
 import MWDATMockDevice
 import Observation
 import SwiftUI
-import UIKit
-// ast-grep-ignore: swift-testing/swift/no-new-xctest
 import XCTest
 
 @MainActor
 final class ViewModelIntegrationTests: XCTestCase {
 
-  private var mockDevice: MockGlasses?
+  private var mockDevice: MockDisplaylessGlasses?
   private var cameraKit: MockCameraKit?
-  private var viewModel: CameraViewModel?
+  private var viewModel: StreamSessionViewModel?
 
   override func setUp() async throws {
     try await super.setUp()
@@ -31,7 +28,7 @@ final class ViewModelIntegrationTests: XCTestCase {
     MockDeviceKit.shared.enable()
 
     // Pair mock device and set up camera kit
-    let pairedMockDevice = try MockDeviceKit.shared.pairGlasses(model: .rayBanMeta)
+    let pairedMockDevice = MockDeviceKit.shared.pairRaybanMeta()
     mockDevice = pairedMockDevice
     cameraKit = pairedMockDevice.services.camera
 
@@ -69,27 +66,20 @@ final class ViewModelIntegrationTests: XCTestCase {
     // Setup camera feed
     camera.setCameraFeed(fileURL: videoURL)
 
-    let viewModel = CameraViewModel(wearables: Wearables.shared)
+    let viewModel = StreamSessionViewModel(wearables: Wearables.shared)
     self.viewModel = viewModel
 
     // Wait for the mock device to be detected
     await observeUntil(timeout: 5) { viewModel.hasActiveDevice }
 
-    // Initially nothing is running
-    XCTAssertEqual(viewModel.streamState, .stopped)
-    XCTAssertFalse(viewModel.hasSession)
+    // Initially not streaming
+    XCTAssertEqual(viewModel.streamingStatus, .stopped)
     XCTAssertFalse(viewModel.isStreaming)
     XCTAssertFalse(viewModel.hasReceivedFirstFrame)
     XCTAssertNil(viewModel.currentVideoFrame)
 
-    // Step 1: start a session (no stream yet)
-    viewModel.startSession()
-    await observeUntil(timeout: 5) { viewModel.isSessionActive }
-    XCTAssertTrue(viewModel.isSessionActive)
-    XCTAssertFalse(viewModel.hasStream)
-
-    // Step 2: start streaming
-    await viewModel.startStreaming()
+    // Start streaming session
+    await viewModel.handleStartStreaming()
 
     // Wait for streaming to establish
     await observeUntil(timeout: 10) {
@@ -100,19 +90,17 @@ final class ViewModelIntegrationTests: XCTestCase {
     XCTAssertTrue(viewModel.isStreaming)
     XCTAssertTrue(viewModel.hasReceivedFirstFrame)
     XCTAssertNotNil(viewModel.currentVideoFrame)
+    XCTAssertTrue([.streaming, .waiting].contains(viewModel.streamingStatus))
 
-    // Stop streaming — session stays connected
-    viewModel.stopStreaming()
-    await observeUntil(timeout: 5) { !viewModel.isStreaming && !viewModel.hasStream }
+    // Stop streaming
+    await viewModel.stopSession()
 
+    // Wait for session to stop
+    await observeUntil(timeout: 5) { !viewModel.isStreaming }
+
+    // Verify streaming stopped (allow for final states to be stopped or waiting)
     XCTAssertFalse(viewModel.isStreaming)
-    XCTAssertEqual(viewModel.streamState, .stopped)
-    XCTAssertTrue(viewModel.isSessionActive)
-
-    // End the session
-    viewModel.endSession()
-    await observeUntil(timeout: 5) { !viewModel.hasSession }
-    XCTAssertFalse(viewModel.hasSession)
+    XCTAssertTrue([.stopped, .waiting].contains(viewModel.streamingStatus))
   }
 
   // MARK: - Photo Capture Flow Tests
@@ -134,131 +122,60 @@ final class ViewModelIntegrationTests: XCTestCase {
     camera.setCameraFeed(fileURL: videoURL)
     camera.setCapturedImage(fileURL: imageURL)
 
-    let viewModel = CameraViewModel(wearables: Wearables.shared)
+    let viewModel = StreamSessionViewModel(wearables: Wearables.shared)
     self.viewModel = viewModel
 
     // Wait for the mock device to be detected
     await observeUntil(timeout: 5) { viewModel.hasActiveDevice }
 
-    // Initially nothing is running
-    XCTAssertEqual(viewModel.streamState, .stopped)
+    // Initially not streaming
+    XCTAssertEqual(viewModel.streamingStatus, .stopped)
     XCTAssertFalse(viewModel.isStreaming)
-    XCTAssertNil(viewModel.activePreview)
+    XCTAssertFalse(viewModel.hasReceivedFirstFrame)
+    XCTAssertNil(viewModel.currentVideoFrame)
 
-    // Start a session, then start streaming
-    viewModel.startSession()
-    await observeUntil(timeout: 5) { viewModel.isSessionActive }
-    await viewModel.startStreaming()
+    // Start streaming session
+    await viewModel.handleStartStreaming()
 
     // Wait for streaming to establish
     await observeUntil(timeout: 10) {
       viewModel.isStreaming && viewModel.hasReceivedFirstFrame && viewModel.currentVideoFrame != nil
     }
 
+    // Verify streaming is active and receiving frames
     XCTAssertTrue(viewModel.isStreaming)
     XCTAssertTrue(viewModel.hasReceivedFirstFrame)
     XCTAssertNotNil(viewModel.currentVideoFrame)
+    XCTAssertTrue([.streaming, .waiting].contains(viewModel.streamingStatus))
 
-    // Capture photo while streaming — opens the capture preview
+    // Capture photo while streaming
     viewModel.capturePhoto()
-    await observeUntil(timeout: 10) { viewModel.activePreview != nil }
+    await observeUntil(timeout: 10) { viewModel.capturedPhoto != nil }
 
-    // Verify a photo preview opened while the stream stayed live
-    if case .photo = viewModel.activePreview {
-      // expected
-    } else {
-      XCTFail("Expected a photo capture preview")
-    }
+    // Verify photo captured while maintaining stream (allow for some timing flexibility)
+    XCTAssertTrue(viewModel.capturedPhoto != nil)
+    XCTAssertTrue(viewModel.showPhotoPreview)
     XCTAssertTrue(viewModel.isStreaming)
 
-    // Dismiss the preview, then tear down
-    viewModel.dismissCapturePreview()
-    XCTAssertNil(viewModel.activePreview)
+    // Dismiss photo and stop streaming
+    viewModel.dismissPhotoPreview()
+    XCTAssertFalse(viewModel.showPhotoPreview)
+    XCTAssertNil(viewModel.capturedPhoto)
 
-    viewModel.endSession()
-    await observeUntil(timeout: 5) { !viewModel.isStreaming && !viewModel.hasSession }
+    await viewModel.stopSession()
+    await observeUntil(timeout: 5) { !viewModel.isStreaming }
 
     XCTAssertFalse(viewModel.isStreaming)
-    XCTAssertFalse(viewModel.hasSession)
+    XCTAssertTrue([.stopped, .waiting].contains(viewModel.streamingStatus))
   }
+}
 
-  // MARK: - Pause/Resume Flow Tests
+final class DeviceSessionErrorTests: XCTestCase {
+  func testSessionEndedByDeviceIndicatesUnavailableDevice() {
+    let error = DeviceSessionError.unexpectedError(description: "Session ended by device")
 
-  func testStreamPausedViaSingleTapKeepsPreviewVisible() async throws {
-    guard let camera = cameraKit, let device = mockDevice else {
-      XCTFail("Mock device and camera should be available")
-      return
-    }
-
-    guard let videoURL = Bundle.main.url(forResource: "plant", withExtension: "mp4") else {
-      XCTFail("Test resources not found")
-      return
-    }
-
-    camera.setCameraFeed(fileURL: videoURL)
-
-    let viewModel = CameraViewModel(wearables: Wearables.shared)
-    self.viewModel = viewModel
-
-    await observeUntil(timeout: 5) { viewModel.hasActiveDevice }
-    viewModel.startSession()
-    await observeUntil(timeout: 5) { viewModel.isSessionActive }
-    await viewModel.startStreaming()
-    await observeUntil(timeout: 10) {
-      viewModel.isStreaming && viewModel.hasReceivedFirstFrame && viewModel.currentVideoFrame != nil
-    }
-
-    // Single tap on the touchpad → stream pauses (matches the T275267876 repro).
-    device.services.captouch.tap()
-    await observeUntil(timeout: 5) { viewModel.streamState == .paused }
-
-    // Regression: paused must keep the last frame visible (the bug hid it).
-    XCTAssertTrue(viewModel.isPaused)
-    XCTAssertNotNil(viewModel.currentVideoFrame, "Last frame should be retained while paused")
-    XCTAssertTrue(viewModel.showsLivePreview, "Preview should remain visible when paused")
-
-    // Single tap again → resumes streaming, preview still visible.
-    device.services.captouch.tap()
-    await observeUntil(timeout: 5) { viewModel.isStreaming }
-    XCTAssertFalse(viewModel.isPaused, "Second tap should exit the paused state")
-    XCTAssertTrue(viewModel.showsLivePreview)
-
-    viewModel.endSession()
-    await observeUntil(timeout: 5) { !viewModel.hasSession }
-    XCTAssertFalse(viewModel.hasSession)
-  }
-
-  func testBackgroundingActiveStreamStopsSessionWithoutShowingError() async throws {
-    guard let camera = cameraKit else {
-      XCTFail("Mock device and camera should be available")
-      return
-    }
-
-    guard let videoURL = Bundle.main.url(forResource: "plant", withExtension: "mp4") else {
-      XCTFail("Test resources not found")
-      return
-    }
-
-    camera.setCameraFeed(fileURL: videoURL)
-
-    let viewModel = CameraViewModel(wearables: Wearables.shared)
-    self.viewModel = viewModel
-
-    await observeUntil(timeout: 5) { viewModel.hasActiveDevice }
-    viewModel.startSession()
-    await observeUntil(timeout: 5) { viewModel.isSessionActive }
-    await viewModel.startStreaming()
-    await observeUntil(timeout: 10) {
-      viewModel.isStreaming && viewModel.hasReceivedFirstFrame && viewModel.currentVideoFrame != nil
-    }
-
-    NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-
-    await observeUntil(timeout: 5) { !viewModel.hasSession }
-    XCTAssertFalse(viewModel.hasSession)
-    XCTAssertEqual(viewModel.sessionState, .idle)
-    XCTAssertEqual(viewModel.streamState, .stopped)
-    XCTAssertFalse(viewModel.showError)
+    XCTAssertTrue(error.indicatesUnavailableDevice)
+    XCTAssertFalse(DeviceSessionError.sessionAlreadyExists.indicatesUnavailableDevice)
   }
 }
 

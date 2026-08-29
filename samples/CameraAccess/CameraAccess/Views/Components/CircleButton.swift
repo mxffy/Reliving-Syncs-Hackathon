@@ -17,6 +17,8 @@ import SwiftUI
 struct CircleButton: View {
   let icon: String
   let text: String?
+  var size: CGFloat = 56
+  var iconSize: CGFloat = 16
   let action: () -> Void
 
   var body: some View {
@@ -30,11 +32,11 @@ struct CircleButton: View {
         }
       } else {
         Image(systemName: icon)
-          .font(.system(size: 16))
+          .font(.system(size: iconSize))
       }
     }
     .foregroundStyle(.black)
-    .frame(width: 56, height: 56)
+    .frame(width: size, height: size)
     .background(.white)
     .clipShape(Circle())
   }

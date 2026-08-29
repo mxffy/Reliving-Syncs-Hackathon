@@ -20,9 +20,10 @@ import SwiftUI
 
 @Observable
 @MainActor
-final class WearablesViewModel {
+class WearablesViewModel {
   var devices: [DeviceIdentifier]
   var registrationState: RegistrationState
+  var showGettingStartedSheet: Bool = false
   var showError: Bool = false
   var errorMessage: String = ""
   var requiresFirmwareUpdate: Bool = false
@@ -46,7 +47,11 @@ final class WearablesViewModel {
 
     registrationTask = Task {
       for await registrationState in wearables.registrationStateStream() {
+        let previousState = self.registrationState
         self.registrationState = registrationState
+        if self.showGettingStartedSheet == false && registrationState == .registered && previousState == .registering {
+          self.showGettingStartedSheet = true
+        }
       }
     }
   }
@@ -162,7 +167,7 @@ final class WearablesViewModel {
     deviceCompatibility[deviceId] = compatibility
     updateFirmwareUpdateRequired()
     if compatibility == .deviceUpdateRequired {
-      showError("\(deviceName) needs an update to work with this app.")
+      showError("Device '\(deviceName)' requires an update to work with this app")
     }
   }
 }

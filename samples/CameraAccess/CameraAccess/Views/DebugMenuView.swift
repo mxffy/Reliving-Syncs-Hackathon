@@ -19,7 +19,7 @@
 import SwiftUI
 
 struct DebugMenuView: View {
-  @Binding var showDebugMenu: Bool
+  var debugMenuViewModel: DebugMenuViewModel
 
   var body: some View {
     HStack {
@@ -27,7 +27,7 @@ struct DebugMenuView: View {
       VStack {
         Spacer()
         Button(action: {
-          showDebugMenu = true
+          debugMenuViewModel.showDebugMenu = true
         }) {
           Image(systemName: "ladybug.fill")
             .foregroundStyle(.white)

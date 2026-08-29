@@ -22,11 +22,6 @@ struct MainAppView: View {
   var viewModel: WearablesViewModel
 
   var body: some View {
-    if viewModel.registrationState == .registered {
-      CameraView(wearables: wearables, wearablesVM: viewModel)
-    } else {
-      // User not registered - show registration/onboarding flow
-      HomeScreenView(viewModel: viewModel)
-    }
+    StreamSessionView(wearables: wearables, wearablesVM: viewModel)
   }
 }
