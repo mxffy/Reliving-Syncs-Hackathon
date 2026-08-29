@@ -76,7 +76,24 @@ enum MemoryAudioClipImporter {
   private static func finalizeClip(audioURL: URL, title: String?) async throws -> MemoryAudioClip {
     let transcript = (try? await transcribe(audioURL: audioURL)) ?? ""
     let embedding = transcript.isEmpty ? nil : SentenceEmbeddingService.shared.embed(transcript)
-    return MemoryAudioClip(audioURL: audioURL, transcript: transcript, embedding: embedding, title: title)
+    let resolvedTitle = title ?? autoTitle(from: transcript)
+    return MemoryAudioClip(audioURL: audioURL, transcript: transcript, embedding: embedding, title: resolvedTitle)
+  }
+
+  /// A short title derived from the transcript itself (e.g. "Roses Garden Sydney"), so clips
+  /// don't all show up as a generic "Voice memory" when no explicit title was given.
+  private static func autoTitle(from transcript: String) -> String? {
+    let stopWords: Set<String> = [
+      "the", "a", "an", "and", "but", "or", "that", "this", "have", "has", "had", "with",
+      "for", "from", "been", "were", "was", "is", "are", "i", "we", "you", "he", "she", "it",
+      "they", "of", "to", "in", "on", "at", "my", "our", "your", "quite", "just", "some",
+    ]
+    let words = transcript
+      .lowercased()
+      .components(separatedBy: CharacterSet.alphanumerics.inverted)
+      .filter { !$0.isEmpty && !stopWords.contains($0) }
+    guard !words.isEmpty else { return nil }
+    return words.prefix(3).map { $0.capitalized }.joined(separator: " ")
   }
 
   /// Transcribes a local audio file on-device using Speech (separate from the live mic pipeline).

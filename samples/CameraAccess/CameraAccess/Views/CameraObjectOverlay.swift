@@ -15,19 +15,32 @@ private struct CameraObjectPlacement: Identifiable {
   let name: String
   let modelURL: URL
   var position: CGPoint
-  var scale: CGFloat = 1
+  var scale: CGFloat = 5
   var rotation: CGSize = .zero
+}
+
+/// Holds all tag-links/placements and their scale/offset/rotation, keyed by tag ID.
+/// Shared singleton (like `MediaCategoryStore`) so this survives the camera view closing and reopening.
+@Observable
+private final class TrackedObjectPlacementStore {
+  static let shared = TrackedObjectPlacementStore()
+  private init() {}
+
+  var placements: [CameraObjectPlacement] = []
+  var objectAssignmentsByTagID: [Int: UUID] = [:]
+  var trackedObjectScaleByTagID: [Int: CGFloat] = [:]
+  var trackedObjectOffsetByTagID: [Int: CGSize] = [:]
+  var trackedObjectRotationByTagID: [Int: CGSize] = [:]
+  var personaScaleByID: [UUID: CGFloat] = [:]
+  var personaOffsetByID: [UUID: CGSize] = [:]
+  var personaRotationByID: [UUID: CGSize] = [:]
 }
 
 struct CameraObjectOverlay: View {
   let trackingService: AprilTagTrackingService?
 
   @State private var mediaStore = MediaCategoryStore.shared
-  @State private var placements: [CameraObjectPlacement] = []
-  @State private var objectAssignmentsByTagID: [Int: UUID] = [:]
-  @State private var trackedObjectScaleByTagID: [Int: CGFloat] = [:]
-  @State private var trackedObjectOffsetByTagID: [Int: CGSize] = [:]
-  @State private var trackedObjectRotationByTagID: [Int: CGSize] = [:]
+  @State private var placementStore = TrackedObjectPlacementStore.shared
   @State private var isEditModeOn = false
   @State private var personaService = PersonaConversationService()
 
@@ -44,7 +57,12 @@ struct CameraObjectOverlay: View {
 
   /// Sidebar-eligible objects: excludes anything currently linked to a tag.
   private var availableObjects: [CapturedMediaItem] {
-    allObjects.filter { !objectAssignmentsByTagID.values.contains($0.id) }
+    allObjects.filter { !placementStore.objectAssignmentsByTagID.values.contains($0.id) }
+  }
+
+  /// Placing/linking an object requires a currently-tracked tag with no object linked yet.
+  private var hasUnlinkedTrackedTag: Bool {
+    trackingService?.trackedTags.contains { objectForTag($0.id) == nil } ?? false
   }
 
   init(trackingService: AprilTagTrackingService? = nil) {
@@ -91,31 +109,36 @@ struct CameraObjectOverlay: View {
             .zIndex(11)
         }
 
-        ForEach($placements) { $placement in
+        ForEach($placementStore.placements) { $placement in
           PlacedCameraObjectView(
             placement: $placement,
             containerSize: geometry.size,
             isEditModeOn: isEditModeOn,
             onDelete: {
-              placements.removeAll { $0.id == placement.id }
+              placementStore.placements.removeAll { $0.id == placement.id }
             }
           )
         }
 
-        objectLibrary(containerSize: geometry.size)
+        objectLibrary()
           .padding(.top, max(geometry.safeAreaInsets.top, 12) + 60)
           .padding(.trailing, 16)
           .zIndex(10)
 
         if let activePersona, let modelURL = activePersona.usdzURL {
-          PersonaOverlayView(modelURL: modelURL)
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            .allowsHitTesting(false)
-            .zIndex(9)
-            .transition(.opacity.combined(with: .scale(scale: 0.85)))
+          PersonaOverlayView(
+            modelURL: modelURL,
+            isEditModeOn: isEditModeOn,
+            scale: personaScaleBinding(forID: activePersona.id),
+            offset: personaOffsetBinding(forID: activePersona.id),
+            rotation: personaRotationBinding(forID: activePersona.id)
+          )
+          .frame(width: geometry.size.width, height: geometry.size.height)
+          .zIndex(9)
+          .transition(.opacity.combined(with: .scale(scale: 0.85)))
         }
 
-        personaStatus(for: personaService.conversationState)
+        personaStatus(for: personaService.conversationState, transcript: personaService.liveTranscript)
           .padding(.bottom, max(geometry.safeAreaInsets.bottom, 12) + 16)
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
           .allowsHitTesting(false)
@@ -146,7 +169,7 @@ struct CameraObjectOverlay: View {
     .ignoresSafeArea()
   }
 
-  private func objectLibrary(containerSize: CGSize) -> some View {
+  private func objectLibrary() -> some View {
     VStack(alignment: .trailing, spacing: 10) {
       Button {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
@@ -184,7 +207,7 @@ struct CameraObjectOverlay: View {
             ScrollView(.vertical, showsIndicators: false) {
               LazyVStack(spacing: 12) {
                 ForEach(availableObjects) { item in
-                  libraryItem(item, containerSize: containerSize)
+                  libraryItem(item)
                 }
               }
             }
@@ -205,36 +228,58 @@ struct CameraObjectOverlay: View {
   }
 
   private func objectForTag(_ tagID: Int) -> CapturedMediaItem? {
-    guard let sourceID = objectAssignmentsByTagID[tagID] else { return nil }
+    guard let sourceID = placementStore.objectAssignmentsByTagID[tagID] else { return nil }
     return allObjects.first { $0.id == sourceID }
   }
 
   private func scaleBinding(forTagID tagID: Int) -> Binding<CGFloat> {
     Binding(
-      get: { trackedObjectScaleByTagID[tagID] ?? 1 },
-      set: { trackedObjectScaleByTagID[tagID] = $0 }
+      // Default new links to max scale (matches the resize gesture's upper clamp below).
+      get: { placementStore.trackedObjectScaleByTagID[tagID] ?? 6 },
+      set: { placementStore.trackedObjectScaleByTagID[tagID] = $0 }
     )
   }
 
   private func offsetBinding(forTagID tagID: Int) -> Binding<CGSize> {
     Binding(
-      get: { trackedObjectOffsetByTagID[tagID] ?? .zero },
-      set: { trackedObjectOffsetByTagID[tagID] = $0 }
+      get: { placementStore.trackedObjectOffsetByTagID[tagID] ?? .zero },
+      set: { placementStore.trackedObjectOffsetByTagID[tagID] = $0 }
     )
   }
 
   private func rotationBinding(forTagID tagID: Int) -> Binding<CGSize> {
     Binding(
-      get: { trackedObjectRotationByTagID[tagID] ?? .zero },
-      set: { trackedObjectRotationByTagID[tagID] = $0 }
+      get: { placementStore.trackedObjectRotationByTagID[tagID] ?? .zero },
+      set: { placementStore.trackedObjectRotationByTagID[tagID] = $0 }
     )
   }
 
   private func unlinkObject(fromTagID tagID: Int) {
-    objectAssignmentsByTagID[tagID] = nil
-    trackedObjectScaleByTagID[tagID] = nil
-    trackedObjectOffsetByTagID[tagID] = nil
-    trackedObjectRotationByTagID[tagID] = nil
+    placementStore.objectAssignmentsByTagID[tagID] = nil
+    placementStore.trackedObjectScaleByTagID[tagID] = nil
+    placementStore.trackedObjectOffsetByTagID[tagID] = nil
+    placementStore.trackedObjectRotationByTagID[tagID] = nil
+  }
+
+  private func personaScaleBinding(forID id: UUID) -> Binding<CGFloat> {
+    Binding(
+      get: { placementStore.personaScaleByID[id] ?? 1 },
+      set: { placementStore.personaScaleByID[id] = $0 }
+    )
+  }
+
+  private func personaOffsetBinding(forID id: UUID) -> Binding<CGSize> {
+    Binding(
+      get: { placementStore.personaOffsetByID[id] ?? .zero },
+      set: { placementStore.personaOffsetByID[id] = $0 }
+    )
+  }
+
+  private func personaRotationBinding(forID id: UUID) -> Binding<CGSize> {
+    Binding(
+      get: { placementStore.personaRotationByID[id] ?? .zero },
+      set: { placementStore.personaRotationByID[id] = $0 }
+    )
   }
 
   private func trackingStatus(for service: AprilTagTrackingService) -> some View {
@@ -278,18 +323,20 @@ struct CameraObjectOverlay: View {
   }
 
   @ViewBuilder
-  private func personaStatus(for state: PersonaConversationState) -> some View {
-    if let presentation = personaStatusPresentation(for: state) {
+  private func personaStatus(for state: PersonaConversationState, transcript: String) -> some View {
+    if let presentation = personaStatusPresentation(for: state, transcript: transcript) {
       HStack(spacing: 7) {
         Image(systemName: presentation.icon)
           .font(.system(size: 12, weight: .semibold))
         Text(presentation.text)
           .font(.system(size: 12, weight: .semibold))
           .lineLimit(1)
+          .truncationMode(.head)
       }
       .foregroundStyle(.white.opacity(0.85))
       .padding(.horizontal, 11)
       .frame(height: 30)
+      .frame(maxWidth: 280)
       .background(Color.black.opacity(0.5), in: Capsule())
       .accessibilityLabel(presentation.text)
       .transition(.opacity)
@@ -297,12 +344,17 @@ struct CameraObjectOverlay: View {
   }
 
   private func personaStatusPresentation(
-    for state: PersonaConversationState
+    for state: PersonaConversationState,
+    transcript: String
   ) -> (icon: String, text: String)? {
     switch state {
     case .idle:
       return nil
     case .listening:
+      let heard = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+      if !heard.isEmpty {
+        return ("waveform", heard)
+      }
       return ("waveform", activePersona == nil ? "Listening for familiar names…" : "Listening…")
     case .matching:
       return ("brain", "Recalling a memory…")
@@ -311,8 +363,9 @@ struct CameraObjectOverlay: View {
     }
   }
 
-  private func libraryItem(_ item: CapturedMediaItem, containerSize: CGSize) -> some View {
-    VStack(spacing: 5) {
+  private func libraryItem(_ item: CapturedMediaItem) -> some View {
+    let isPlaceable = hasUnlinkedTrackedTag
+    return VStack(spacing: 5) {
       Image(uiImage: item.photo)
         .resizable()
         .aspectRatio(contentMode: .fill)
@@ -335,8 +388,11 @@ struct CameraObjectOverlay: View {
     .frame(width: 92)
     .padding(.vertical, 6)
     .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    // Disabled (dimmed, non-interactive) until an unlinked AprilTag is visible to place onto.
+    .opacity(isPlaceable ? 1 : 0.4)
+    .allowsHitTesting(isPlaceable)
     .onTapGesture {
-      tapToPlaceOrLink(item, containerSize: containerSize)
+      tapToPlaceOrLink(item)
     }
     .draggable(item.id.uuidString) {
       Image(uiImage: item.photo)
@@ -355,7 +411,7 @@ struct CameraObjectOverlay: View {
       modelURL: modelURL,
       position: clampedPosition(position, in: size)
     )
-    placements.append(placement)
+    placementStore.placements.append(placement)
     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
       isEditModeOn = false
     }
@@ -368,34 +424,27 @@ struct CameraObjectOverlay: View {
     in size: CGSize,
     trackingService: AprilTagTrackingService?
   ) -> Bool {
-    if
-      let trackedTag = nearestTrackedTag(
-        to: position,
-        in: size,
-        trackingService: trackingService
-      )
-    {
-      linkObject(item, toTagID: trackedTag.id)
-      return true
+    // Only allowed onto a tag that isn't already linked to another object — never floats freely.
+    guard
+      let trackedTag = nearestTrackedTag(to: position, in: size, trackingService: trackingService),
+      objectForTag(trackedTag.id) == nil
+    else {
+      return false
     }
-    return placeObject(item, at: position, in: size)
+    linkObject(item, toTagID: trackedTag.id)
+    return true
   }
 
-  /// Tapping (rather than dragging to a specific tag) links to whichever tag is currently visible.
-  private func tapToPlaceOrLink(_ item: CapturedMediaItem, containerSize: CGSize) {
-    if let firstTrackedTag = trackingService?.trackedTags.first {
-      linkObject(item, toTagID: firstTrackedTag.id)
+  /// Links to the first unlinked tracked tag. No-op if none is visible (library item is disabled then).
+  private func tapToPlaceOrLink(_ item: CapturedMediaItem) {
+    guard let unlinkedTag = trackingService?.trackedTags.first(where: { objectForTag($0.id) == nil }) else {
       return
     }
-    _ = placeObject(
-      item,
-      at: CGPoint(x: containerSize.width / 2, y: containerSize.height / 2),
-      in: containerSize
-    )
+    linkObject(item, toTagID: unlinkedTag.id)
   }
 
   private func linkObject(_ item: CapturedMediaItem, toTagID tagID: Int) {
-    objectAssignmentsByTagID[tagID] = item.id
+    placementStore.objectAssignmentsByTagID[tagID] = item.id
     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
       isEditModeOn = false
     }
@@ -466,9 +515,79 @@ private struct AprilTagDetectionIndicator: View {
 /// fixed in front of the camera — as the device moves, the persona moves with it, always in view.
 private struct PersonaOverlayView: View {
   let modelURL: URL
+  let isEditModeOn: Bool
+  @Binding var scale: CGFloat
+  @Binding var offset: CGSize
+  @Binding var rotation: CGSize
+
+  @State private var dragOrigin: CGSize?
+  @State private var scaleOrigin: CGFloat?
+  @State private var rotationOrigin: CGSize?
 
   var body: some View {
-    ObjectModelSceneView(url: modelURL, pitch: 0, yaw: 0)
+    // Face the camera dead-on (no generic handheld-object tilt), closer + lower framing
+    // so the face fills the screen instead of the legs; dimmed lighting avoids blowing out the face.
+    // The model's own forward direction faces away from the camera, so add a half-turn.
+    ObjectModelSceneView(
+      url: modelURL,
+      pitch: Float(rotation.height),
+      yaw: Float(rotation.width),
+      basePitch: 0,
+      baseYaw: .pi,
+      cameraDistance: 1.3,
+      horizontalFramingOffset: 0.1,
+      verticalFramingOffset: -0.7,
+      lightingIntensityMultiplier: 0.4
+    )
+    .scaleEffect(scale)
+    .offset(offset)
+    .contentShape(Rectangle())
+    .simultaneousGesture(dragGesture, including: isEditModeOn ? .all : .none)
+    .simultaneousGesture(resizeGesture, including: isEditModeOn ? .all : .none)
+    .simultaneousGesture(rotateGesture, including: isEditModeOn ? .none : .all)
+  }
+
+  private var dragGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .onChanged { value in
+        let origin = dragOrigin ?? offset
+        dragOrigin = origin
+        offset = CGSize(
+          width: origin.width + value.translation.width,
+          height: origin.height + value.translation.height
+        )
+      }
+      .onEnded { _ in
+        dragOrigin = nil
+      }
+  }
+
+  private var resizeGesture: some Gesture {
+    MagnificationGesture()
+      .onChanged { value in
+        let origin = scaleOrigin ?? scale
+        scaleOrigin = origin
+        scale = min(max(origin * value, 0.5), 2)
+      }
+      .onEnded { _ in
+        scaleOrigin = nil
+      }
+  }
+
+  /// Spins the model in place (like a Quick Look preview) without moving it.
+  private var rotateGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .onChanged { value in
+        let origin = rotationOrigin ?? rotation
+        rotationOrigin = origin
+        rotation = CGSize(
+          width: origin.width + value.translation.width / 60,
+          height: min(max(origin.height + value.translation.height / 60, -1.4), 1.4)
+        )
+      }
+      .onEnded { _ in
+        rotationOrigin = nil
+      }
   }
 }
 
@@ -535,7 +654,7 @@ private struct TrackedCameraObjectView: View {
       .onChanged { value in
         let origin = scaleOrigin ?? scale
         scaleOrigin = origin
-        scale = min(max(origin * value, 0.4), 3)
+        scale = min(max(origin * value, 0.4), 6)
       }
       .onEnded { _ in
         scaleOrigin = nil
@@ -623,7 +742,7 @@ private struct PlacedCameraObjectView: View {
       .onChanged { value in
         let origin = scaleOrigin ?? placement.scale
         scaleOrigin = origin
-        placement.scale = min(max(origin * value, 0.45), 2.5)
+        placement.scale = min(max(origin * value, 0.45), 5)
         placement.position = clampedPosition(placement.position)
       }
       .onEnded { _ in
@@ -665,6 +784,14 @@ private struct ObjectModelSceneView: UIViewRepresentable {
   var pitch: Float = 0
   var yaw: Float = 0
   var roll: Float = 0
+  /// Base tilt applied before `pitch`/`yaw`; defaults suit handheld tracked objects.
+  /// The persona overlay overrides these to face the camera dead-on.
+  var basePitch: Float = -0.18
+  var baseYaw: Float = 0.5
+  var cameraDistance: Float = 4
+  var horizontalFramingOffset: Float = 0
+  var verticalFramingOffset: Float = 0
+  var lightingIntensityMultiplier: Float = 1
 
   func makeUIView(context: Context) -> SCNView {
     let sceneView = SCNView()
@@ -678,7 +805,7 @@ private struct ObjectModelSceneView: UIViewRepresentable {
 
   func updateUIView(_ uiView: SCNView, context: Context) {
     uiView.scene?.rootNode.childNode(withName: "cameraObjectModel", recursively: false)?.eulerAngles =
-      SCNVector3(-0.18 + pitch, 0.5 + yaw, roll)
+      SCNVector3(basePitch + pitch, baseYaw + yaw, roll)
   }
 
   private func makeScene() -> SCNScene {
@@ -702,11 +829,11 @@ private struct ObjectModelSceneView: UIViewRepresentable {
       modelContainer.scale = SCNVector3(repeating: 1.7 / largestDimension)
     }
     modelContainer.position = SCNVector3(
-      -(bounds.min.x + bounds.max.x) / 2 * modelContainer.scale.x,
-      -(bounds.min.y + bounds.max.y) / 2 * modelContainer.scale.y,
+      -(bounds.min.x + bounds.max.x) / 2 * modelContainer.scale.x + horizontalFramingOffset,
+      -(bounds.min.y + bounds.max.y) / 2 * modelContainer.scale.y + verticalFramingOffset,
       -(bounds.min.z + bounds.max.z) / 2 * modelContainer.scale.z
     )
-    modelContainer.eulerAngles = SCNVector3(-0.18 + pitch, 0.5 + yaw, roll)
+    modelContainer.eulerAngles = SCNVector3(basePitch + pitch, baseYaw + yaw, roll)
     scene.rootNode.addChildNode(modelContainer)
 
     let cameraNode = SCNNode()
@@ -714,13 +841,13 @@ private struct ObjectModelSceneView: UIViewRepresentable {
     camera.usesOrthographicProjection = false
     camera.fieldOfView = 35
     cameraNode.camera = camera
-    cameraNode.position = SCNVector3(0, 0, 4)
+    cameraNode.position = SCNVector3(0, 0, cameraDistance)
     scene.rootNode.addChildNode(cameraNode)
 
     let keyLight = SCNNode()
     keyLight.light = SCNLight()
     keyLight.light?.type = .omni
-    keyLight.light?.intensity = 1_200
+    keyLight.light?.intensity = CGFloat(1_200 * lightingIntensityMultiplier)
     keyLight.position = SCNVector3(2, 3, 4)
     scene.rootNode.addChildNode(keyLight)
 
@@ -728,14 +855,14 @@ private struct ObjectModelSceneView: UIViewRepresentable {
     let fillLight = SCNNode()
     fillLight.light = SCNLight()
     fillLight.light?.type = .omni
-    fillLight.light?.intensity = 350
+    fillLight.light?.intensity = CGFloat(350 * lightingIntensityMultiplier)
     fillLight.position = SCNVector3(-3, -1, 3)
     scene.rootNode.addChildNode(fillLight)
 
     let ambientLight = SCNNode()
     ambientLight.light = SCNLight()
     ambientLight.light?.type = .ambient
-    ambientLight.light?.intensity = 450
+    ambientLight.light?.intensity = CGFloat(450 * lightingIntensityMultiplier)
     scene.rootNode.addChildNode(ambientLight)
 
     return scene

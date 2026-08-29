@@ -18,6 +18,8 @@
 		FEEE00132F9500010000000A /* golf.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00122F9500010000000A /* golf.mp3 */; };
 		FEEE00172F9500010000000C /* telephone.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00162F9500010000000C /* telephone.mp3 */; };
 		FEEE00192F9500010000000D /* VoiceMemoriesEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00182F9500010000000D /* VoiceMemoriesEditor.swift */; };
+		FEEE001B2F9500010000000E /* Old_man_Spice_animated.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE001A2F9500010000000E /* Old_man_Spice_animated.usdz */; };
+		FEEE001D2F9500010000000F /* david_photograph.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE001C2F9500010000000F /* david_photograph.png */; };
 		8F8F00782E8ACB4600A4BDAF /* WearablesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8F00772E8ACB4500A4BDAF /* WearablesViewModel.swift */; };
 		8FD96B7F2E6F0A9800F56AB1 /* CameraAccessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD96B792E6F0A9800F56AB1 /* CameraAccessApp.swift */; };
 		8FD96B812E6F0A9800F56AB1 /* HomeScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD96B722E6F0A9800F56AB1 /* HomeScreenView.swift */; };
@@ -54,6 +56,8 @@
 		F0CA000C2F97000900000001 /* Telephone.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000B2F97000900000001 /* Telephone.usdz */; };
 		F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00112F97000C00000001 /* RemiLoading.mp4 */; };
 		F0CA00142F97000D00000001 /* Telephone.png in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00132F97000D00000001 /* Telephone.png */; };
+		FEEE001F2F95000100000010 /* VASE_VICTORIAN_ERA.usdz in Resources */ = {isa = PBXBuildFile; fileRef = FEEE001E2F95000100000010 /* VASE_VICTORIAN_ERA.usdz */; };
+		FEEE00212F95000100000011 /* VASE_VICTORIAN_ERA.png in Resources */ = {isa = PBXBuildFile; fileRef = FEEE00202F95000100000011 /* VASE_VICTORIAN_ERA.png */; };
 		F0CA00162F97000F00000001 /* AprilTagTrackingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */; };
 		F0CA00192F97001200000001 /* SwiftAprilTag in Frameworks */ = {isa = PBXBuildFile; productRef = F0CA00182F97001100000001 /* SwiftAprilTag */; };
 		FEEE00012F95000100000001 /* DeviceSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00002F95000100000001 /* DeviceSessionManager.swift */; };
@@ -141,6 +145,10 @@
 		FEEE00122F9500010000000A /* golf.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = golf.mp3; sourceTree = "<group>"; };
 		FEEE00162F9500010000000C /* telephone.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = telephone.mp3; sourceTree = "<group>"; };
 		FEEE00182F9500010000000D /* VoiceMemoriesEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceMemoriesEditor.swift; sourceTree = "<group>"; };
+		FEEE001A2F9500010000000E /* Old_man_Spice_animated.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Old_man_Spice_animated.usdz; sourceTree = "<group>"; };
+		FEEE001C2F9500010000000F /* david_photograph.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = david_photograph.png; sourceTree = "<group>"; };
+		FEEE001E2F95000100000010 /* VASE_VICTORIAN_ERA.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = VASE_VICTORIAN_ERA.usdz; sourceTree = "<group>"; };
+		FEEE00202F95000100000011 /* VASE_VICTORIAN_ERA.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = VASE_VICTORIAN_ERA.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -250,7 +258,11 @@
 				8FD96B772E6F0A9800F56AB1 /* Assets.xcassets */,
 				F0CA000B2F97000900000001 /* Telephone.usdz */,
 				FEEE000E2F95000100000008 /* David.usdz */,
+				FEEE001A2F9500010000000E /* Old_man_Spice_animated.usdz */,
+				FEEE001E2F95000100000010 /* VASE_VICTORIAN_ERA.usdz */,
 				FEEE00102F95000100000009 /* David.png */,
+				FEEE001C2F9500010000000F /* david_photograph.png */,
+				FEEE00202F95000100000011 /* VASE_VICTORIAN_ERA.png */,
 				FEEE00122F9500010000000A /* golf.mp3 */,
 				FEEE00162F9500010000000C /* telephone.mp3 */,
 				F0CA00112F97000C00000001 /* RemiLoading.mp4 */,
@@ -425,9 +437,13 @@
 				8FD96B8D2E6F0A9800F56AB1 /* Assets.xcassets in Resources */,
 				F0CA000C2F97000900000001 /* Telephone.usdz in Resources */,
 				FEEE000F2F95000100000008 /* David.usdz in Resources */,
+				FEEE001B2F9500010000000E /* Old_man_Spice_animated.usdz in Resources */,
+				FEEE001D2F9500010000000F /* david_photograph.png in Resources */,
 				FEEE00112F95000100000009 /* David.png in Resources */,
 				FEEE00132F9500010000000A /* golf.mp3 in Resources */,
 				FEEE00172F9500010000000C /* telephone.mp3 in Resources */,
+				FEEE001F2F95000100000010 /* VASE_VICTORIAN_ERA.usdz in Resources */,
+				FEEE00212F95000100000011 /* VASE_VICTORIAN_ERA.png in Resources */,
 				F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */,
 				F0CA00142F97000D00000001 /* Telephone.png in Resources */,
 			);

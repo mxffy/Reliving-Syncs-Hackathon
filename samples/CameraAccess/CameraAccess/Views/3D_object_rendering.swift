@@ -13,6 +13,7 @@
 // Currently just captures and displays photos per category; 3D rendering logic to come later.
 //
 
+import CoreImage
 import SwiftUI
 import UIKit
 
@@ -93,7 +94,7 @@ final class MediaCategoryStore {
   var peopleItems: [CapturedMediaItem]
 
   private init(bundle: Bundle = .main) {
-    objectItems = Self.telephoneItem(bundle: bundle).map { [$0] } ?? []
+    objectItems = [Self.telephoneItem(bundle: bundle), Self.vaseItem(bundle: bundle)].compactMap { $0 }
     peopleItems = Self.davidItem(bundle: bundle).map { [$0] } ?? []
   }
 
@@ -115,10 +116,28 @@ final class MediaCategoryStore {
     )
   }
 
+  private static func vaseItem(bundle: Bundle) -> CapturedMediaItem? {
+    guard
+      let modelURL = bundle.url(forResource: "VASE_VICTORIAN_ERA", withExtension: "usdz"),
+      let photoURL = bundle.url(forResource: "VASE_VICTORIAN_ERA", withExtension: "png"),
+      let thumbnail = UIImage(contentsOfFile: photoURL.path)
+    else {
+      return nil
+    }
+    return CapturedMediaItem(
+      id: UUID(uuidString: "9D3C7C7B-6A3F-4B3E-9C8F-2B8E5A6C1D2E")!,
+      photo: thumbnail,
+      name: "Vase",
+      description: "Ornate Victorian-era porcelain vase",
+      usdzURL: modelURL,
+      isDefault: true
+    )
+  }
+
   private static func davidItem(bundle: Bundle) -> CapturedMediaItem? {
     guard
-      let modelURL = bundle.url(forResource: "David", withExtension: "usdz"),
-      let photoURL = bundle.url(forResource: "David", withExtension: "png"),
+      let modelURL = bundle.url(forResource: "Old_man_Spice_animated", withExtension: "usdz"),
+      let photoURL = bundle.url(forResource: "david_photograph", withExtension: "png"),
       let photo = UIImage(contentsOfFile: photoURL.path)
     else {
       return nil
@@ -276,7 +295,8 @@ struct CategorySectionView: View {
     .sheet(item: $activePickerSource) { source in
       CategoryImagePickerView(sourceType: source) { image in
         activePickerSource = nil
-        pendingImage = image
+        // All camera captures (Objects and People) are taken in black and white.
+        pendingImage = source == .camera ? monochromeImage(from: image) : image
       }
       .ignoresSafeArea()
     }
@@ -306,6 +326,23 @@ struct CategorySectionView: View {
     guard let index = items.firstIndex(where: { $0.id == updatedItem.id }) else { return }
     items[index] = updatedItem
     selectedItem = updatedItem
+  }
+
+  private func monochromeImage(from image: UIImage) -> UIImage {
+    guard
+      let ciImage = CIImage(image: image),
+      let filter = CIFilter(name: "CIPhotoEffectMono")
+    else {
+      return image
+    }
+    filter.setValue(ciImage, forKey: kCIInputImageKey)
+    guard
+      let outputImage = filter.outputImage,
+      let cgImage = CIContext().createCGImage(outputImage, from: outputImage.extent)
+    else {
+      return image
+    }
+    return UIImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
   }
 
   private func deleteItem(_ item: CapturedMediaItem) {

@@ -43,19 +43,30 @@ final class PersonaConversationService {
   private(set) var conversationState: PersonaConversationState = .idle
   private(set) var activePersonaID: UUID?
   private(set) var lastError: String?
+  /// The most recent live transcript heard, so the UI can show it as proof the mic is picking up speech.
+  private(set) var liveTranscript: String = ""
 
   var isListening: Bool { conversationState != .idle }
 
   // Tunables kept in one place so the retrieval behaviour can be tuned during testing.
-  private let similarityThreshold: Float = 0.70
+  // Apple's on-device NLEmbedding sentence embeddings rarely score paraphrases above ~0.5-0.6,
+  // so the threshold is kept well below the naive "high confidence" range of a hosted model.
+  private let similarityThreshold: Float = 0.40
   /// If the top match doesn't lead the runner-up by at least this much, treat it as ambiguous and stay silent.
-  private let ambiguityMargin: Float = 0.08
+  private let ambiguityMargin: Float = 0.05
   /// How long the transcript must stop changing before we treat an utterance as "settled" and run retrieval.
   private let stabilizationDelay: TimeInterval = 0.6
   /// Minimum time between two retrieval attempts, to absorb trailing partial-result noise.
   private let retrievalCooldown: TimeInterval = 1.5
 
   private static let farewellWords: Set<String> = ["bye", "goodbye"]
+  /// Excluded when scoring keyword overlap, so retrieval boosts on real topic words ("golf") not filler words.
+  private static let overlapStopwords: Set<String> = [
+    "a", "an", "the", "i", "you", "he", "she", "it", "we", "they", "is", "am", "are", "was", "were",
+    "do", "does", "did", "have", "has", "had", "go", "going", "went", "and", "or", "but", "with",
+    "to", "of", "in", "on", "at", "for", "today", "yesterday", "quite", "out", "up", "down", "so",
+    "his", "her", "their", "my", "your", "our", "that", "this", "these", "those", "been", "being", "be",
+  ]
 
   @ObservationIgnored private let mediaStore: MediaCategoryStore
   @ObservationIgnored private let embeddingService: SentenceEmbeddingService
@@ -106,6 +117,7 @@ final class PersonaConversationService {
     playbackService.stop()
     teardownRecognition()
     activePersonaID = nil
+    liveTranscript = ""
     conversationState = .idle
   }
 
@@ -117,16 +129,47 @@ final class PersonaConversationService {
       return
     }
 
-    let audioSession = AVAudioSession.sharedInstance()
-    do {
-      // .voiceChat enables echo cancellation, so audio we play back through the speaker
-      // is suppressed from the mic input rather than being re-transcribed.
-      try audioSession.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
-      try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-    } catch {
-      lastError = "Audio session error: \(error.localizedDescription)"
-      return
+    if !audioEngine.isRunning {
+      let audioSession = AVAudioSession.sharedInstance()
+      do {
+        // Plain .default mode (not .voiceChat) keeps normal recording gain instead of
+        // telephony-tuned processing, which was suppressing quieter or farther-away speech.
+        // The software `.playing` guard in handleTranscript still prevents our own playback
+        // from being re-transcribed, so we don't need hardware echo cancellation here.
+        try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+      } catch {
+        lastError = "Audio session error: \(error.localizedDescription)"
+        return
+      }
+
+      let inputNode = audioEngine.inputNode
+      let recordingFormat = inputNode.outputFormat(forBus: 0)
+      inputNode.removeTap(onBus: 0)
+      inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+        self?.recognitionRequest?.append(buffer)
+      }
+
+      audioEngine.prepare()
+      do {
+        try audioEngine.start()
+      } catch {
+        lastError = "Audio engine error: \(error.localizedDescription)"
+        return
+      }
     }
+
+    if conversationState == .idle {
+      conversationState = .listening
+    }
+
+    startRecognitionTask(with: speechRecognizer)
+  }
+
+  /// Starts (or restarts) just the recognition request/task, leaving the audio engine and its
+  /// mic tap running continuously so a restart never drops a gap of speech mid-sentence.
+  private func startRecognitionTask(with speechRecognizer: SFSpeechRecognizer) {
+    recognitionTask?.cancel()
 
     let request = SFSpeechAudioBufferRecognitionRequest()
     request.shouldReportPartialResults = true
@@ -135,29 +178,14 @@ final class PersonaConversationService {
     }
     recognitionRequest = request
 
-    let inputNode = audioEngine.inputNode
-    let recordingFormat = inputNode.outputFormat(forBus: 0)
-    inputNode.removeTap(onBus: 0)
-    inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
-      self?.recognitionRequest?.append(buffer)
-    }
-
-    audioEngine.prepare()
-    do {
-      try audioEngine.start()
-      if conversationState == .idle {
-        conversationState = .listening
-      }
-    } catch {
-      lastError = "Audio engine error: \(error.localizedDescription)"
-      return
-    }
-
     recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
       guard let self else { return }
       if let result {
         let transcript = result.bestTranscription.formattedString
-        Task { @MainActor in self.handleTranscript(transcript) }
+        Task { @MainActor in
+          self.liveTranscript = transcript
+          self.handleTranscript(transcript)
+        }
       }
       if error != nil || (result?.isFinal ?? false) {
         Task { @MainActor in self.restartIfNeeded() }
@@ -176,11 +204,12 @@ final class PersonaConversationService {
     audioEngine.inputNode.removeTap(onBus: 0)
   }
 
-  /// The recognition task times out periodically; restart it to keep listening continuously.
+  /// The recognition task finalizes periodically; start a fresh one to keep listening
+  /// continuously, without tearing down the audio engine so no speech is missed in between.
   private func restartIfNeeded() {
-    guard wantsListening else { return }
-    teardownRecognition()
-    beginRecognition()
+    guard wantsListening, let speechRecognizer else { return }
+    recognitionRequest?.endAudio()
+    startRecognitionTask(with: speechRecognizer)
   }
 
   // MARK: - Trigger detection
@@ -275,7 +304,11 @@ final class PersonaConversationService {
     }
 
     let scored = candidates
-      .map { clip, embedding in (clip, SentenceEmbeddingService.cosineSimilarity(queryEmbedding, embedding)) }
+      .map { clip, embedding -> (MemoryAudioClip, Float) in
+        let similarity = SentenceEmbeddingService.cosineSimilarity(queryEmbedding, embedding)
+        let bonus = Self.keywordOverlapBonus(query: rawTranscript, transcript: clip.transcript)
+        return (clip, similarity + bonus)
+      }
       .sorted { $0.1 > $1.1 }
 
     guard let best = scored.first else {
@@ -301,6 +334,16 @@ final class PersonaConversationService {
   }
 
   // MARK: - Tokenizing / phonetic matching
+
+  /// Rewards clips that literally share a topic word with the query (e.g. "golf"), since Apple's
+  /// on-device sentence embedding alone often under-scores true paraphrase matches.
+  private static func keywordOverlapBonus(query: String, transcript: String) -> Float {
+    let queryWords = Set(tokenize(query)).subtracting(overlapStopwords)
+    let transcriptWords = Set(tokenize(transcript)).subtracting(overlapStopwords)
+    let shared = queryWords.intersection(transcriptWords).count
+    guard shared > 0 else { return 0 }
+    return min(Float(shared) * 0.15, 0.3)
+  }
 
   private static func tokenize(_ text: String) -> [String] {
     text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }

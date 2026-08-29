@@ -27,6 +27,9 @@ final class DeviceSessionManager {
   @ObservationIgnored private var deviceMonitorTask: Task<Void, Never>?
   @ObservationIgnored private var registrationMonitorTask: Task<Void, Never>?
   @ObservationIgnored private var stateObserverTask: Task<Void, Never>?
+  // Guards against the momentary non-.connected blips the SDK reports mid-handshake,
+  // which otherwise flash the UI from the glasses icon to the phone-camera icon.
+  @ObservationIgnored private var pendingDisconnectTask: Task<Void, Never>?
 
   init(wearables: WearablesInterface) {
     self.wearables = wearables
@@ -59,6 +62,8 @@ final class DeviceSessionManager {
     registrationMonitorTask = nil
     stateObserverTask?.cancel()
     stateObserverTask = nil
+    pendingDisconnectTask?.cancel()
+    pendingDisconnectTask = nil
     deviceSession?.stop()
     deviceSession = nil
     isReady = false
@@ -189,6 +194,8 @@ final class DeviceSessionManager {
 
   private func handleActiveDeviceChange(_ deviceId: DeviceIdentifier?) {
     linkStateListenerToken = nil
+    pendingDisconnectTask?.cancel()
+    pendingDisconnectTask = nil
     activeDeviceId = deviceId
 
     guard let deviceId, let device = wearables.deviceForIdentifier(deviceId) else {
@@ -212,15 +219,28 @@ final class DeviceSessionManager {
   private func handleLinkStateChange(_ state: LinkState, for deviceId: DeviceIdentifier) {
     guard activeDeviceId == deviceId else { return }
 
+    pendingDisconnectTask?.cancel()
+    pendingDisconnectTask = nil
+
     if state == .connected {
       rejectedDeviceId = nil
       hasActiveDevice = true
-    } else {
-      hasActiveDevice = false
+      return
+    }
+
+    // Don't flip the UI to "disconnected" on a momentary blip — only commit
+    // the change if the link is still non-connected after a short delay.
+    pendingDisconnectTask = Task { [weak self] in
+      try? await Task.sleep(nanoseconds: 500_000_000)
+      guard !Task.isCancelled else { return }
+      guard let self, self.activeDeviceId == deviceId else { return }
+      self.hasActiveDevice = false
     }
   }
 
   private func rejectDevice(_ deviceId: DeviceIdentifier?) {
+    pendingDisconnectTask?.cancel()
+    pendingDisconnectTask = nil
     rejectedDeviceId = deviceId
     hasActiveDevice = false
   }
@@ -235,6 +255,8 @@ final class DeviceSessionManager {
           startDeviceMonitoring()
         } else {
           stopCurrentSession()
+          pendingDisconnectTask?.cancel()
+          pendingDisconnectTask = nil
           activeDeviceId = nil
           rejectedDeviceId = nil
           linkStateListenerToken = nil

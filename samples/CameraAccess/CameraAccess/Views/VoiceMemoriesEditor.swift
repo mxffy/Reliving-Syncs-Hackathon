@@ -14,6 +14,8 @@
 // and the saved item's details screen, so memories can be added at either point.
 //
 
+import CoreTransferable
+import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -21,7 +23,9 @@ struct VoiceMemoriesEditor: View {
   @Binding var audioClips: [MemoryAudioClip]
 
   @State private var recorder = MemoryAudioRecorder()
-  @State private var isImportingAudio = false
+  @State private var isImportingFile = false
+  @State private var isPickingPhoto = false
+  @State private var photoPickerItem: PhotosPickerItem?
   @State private var isProcessingAudioImport = false
   @State private var audioImportError: String?
 
@@ -30,10 +34,6 @@ struct VoiceMemoriesEditor: View {
       Text("Voice Memories")
         .font(.system(size: 16, weight: .semibold))
         .foregroundStyle(Color.relivingBurgundy)
-
-      Text("Upload a real recording (mp3/mp4) or record one now. Only these authentic clips are ever played back — nothing is ever generated.")
-        .font(.system(size: 12))
-        .foregroundStyle(Color.relivingDarkSage)
 
       if !audioClips.isEmpty {
         VStack(spacing: 8) {
@@ -44,8 +44,19 @@ struct VoiceMemoriesEditor: View {
       }
 
       HStack(spacing: 10) {
-        Button {
-          isImportingAudio = true
+        Menu {
+          Button {
+            // Toggling state to drive a top-level .photosPicker modifier (below), rather than
+            // embedding a PhotosPicker directly as a Menu item, which can fail to present at all.
+            isPickingPhoto = true
+          } label: {
+            Label("Video from Photos", systemImage: "photo.on.rectangle")
+          }
+          Button {
+            isImportingFile = true
+          } label: {
+            Label("Audio from Files", systemImage: "folder")
+          }
         } label: {
           Label("Upload", systemImage: "square.and.arrow.up")
             .font(.system(size: 13, weight: .semibold))
@@ -83,10 +94,15 @@ struct VoiceMemoriesEditor: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.relivingBeige.opacity(0.5)))
     .fileImporter(
-      isPresented: $isImportingAudio,
-      allowedContentTypes: [.mp3, .mpeg4Audio, .audio, .mpeg4Movie, .movie],
+      isPresented: $isImportingFile,
+      allowedContentTypes: [.mp3, .mpeg4Audio, .audio],
       onCompletion: handleFileImport
     )
+    .photosPicker(isPresented: $isPickingPhoto, selection: $photoPickerItem, matching: .videos)
+    .onChange(of: photoPickerItem) { _, newItem in
+      guard let newItem else { return }
+      importVideoFromPhotos(newItem)
+    }
   }
 
   private func audioClipRow(_ clip: MemoryAudioClip) -> some View {
@@ -128,13 +144,7 @@ struct VoiceMemoriesEditor: View {
     audioImportError = nil
     Task {
       do {
-        let contentType = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
-        let clip: MemoryAudioClip
-        if let contentType, contentType.conforms(to: .movie) {
-          clip = try await MemoryAudioClipImporter.importVideoAudio(from: url, title: nil)
-        } else {
-          clip = try await MemoryAudioClipImporter.importAudio(from: url, title: nil)
-        }
+        let clip = try await MemoryAudioClipImporter.importAudio(from: url, title: nil)
         await MainActor.run {
           audioClips.append(clip)
           isProcessingAudioImport = false
@@ -143,6 +153,31 @@ struct VoiceMemoriesEditor: View {
         await MainActor.run {
           audioImportError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
           isProcessingAudioImport = false
+        }
+      }
+    }
+  }
+
+  private func importVideoFromPhotos(_ item: PhotosPickerItem) {
+    isProcessingAudioImport = true
+    audioImportError = nil
+    Task {
+      do {
+        guard let movie = try await item.loadTransferable(type: PickedMovie.self) else {
+          throw MemoryAudioClipImporterError.unreadableSource
+        }
+        let clip = try await MemoryAudioClipImporter.importVideoAudio(from: movie.url, title: nil)
+        try? FileManager.default.removeItem(at: movie.url)
+        await MainActor.run {
+          audioClips.append(clip)
+          isProcessingAudioImport = false
+          photoPickerItem = nil
+        }
+      } catch {
+        await MainActor.run {
+          audioImportError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+          isProcessingAudioImport = false
+          photoPickerItem = nil
         }
       }
     }
@@ -170,6 +205,26 @@ struct VoiceMemoriesEditor: View {
     } else {
       audioImportError = nil
       recorder.start()
+    }
+  }
+}
+
+/// Wraps a Photos-picked video as a local file URL so its audio track can be extracted afterward.
+private struct PickedMovie: Transferable {
+  let url: URL
+
+  static var transferRepresentation: some TransferRepresentation {
+    FileRepresentation(contentType: .movie) { movie in
+      SentTransferredFile(movie.url)
+    } importing: { received in
+      let destination = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString)
+        .appendingPathExtension(received.file.pathExtension.isEmpty ? "mov" : received.file.pathExtension)
+      if FileManager.default.fileExists(atPath: destination.path) {
+        try FileManager.default.removeItem(at: destination)
+      }
+      try FileManager.default.copyItem(at: received.file, to: destination)
+      return Self(url: destination)
     }
   }
 }
