@@ -23,7 +23,7 @@ final class ViewModelIntegrationTests: XCTestCase {
 
   override func setUp() async throws {
     try await super.setUp()
-    try? Wearables.configure()
+    try Wearables.configure()
 
     MockDeviceKit.shared.enable()
 

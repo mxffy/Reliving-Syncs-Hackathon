@@ -110,6 +110,7 @@ private struct CameraAccessRootView: View {
   }
 
   private func configureWearables() async {
+    guard ProcessInfo.processInfo.environment["XCTestBundlePath"] == nil else { return }
     guard wearablesViewModel == nil, configurationError == nil else { return }
 
     do {

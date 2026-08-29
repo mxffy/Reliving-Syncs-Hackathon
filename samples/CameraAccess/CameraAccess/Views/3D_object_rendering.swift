@@ -16,6 +16,14 @@
 import SwiftUI
 import UIKit
 
+extension Color {
+  static let relivingBurgundy = Color(red: 119 / 255, green: 69 / 255, blue: 74 / 255)
+  static let relivingLightSage = Color(red: 177 / 255, green: 182 / 255, blue: 161 / 255)
+  static let relivingIvory = Color(red: 234 / 255, green: 224 / 255, blue: 208 / 255)
+  static let relivingBeige = Color(red: 177 / 255, green: 182 / 255, blue: 161 / 255)
+  static let relivingDarkSage = Color(red: 68 / 255, green: 68 / 255, blue: 68 / 255)
+}
+
 /// Which recognition category a captured photo belongs to.
 enum MediaCategoryKind {
   case object
@@ -46,6 +54,7 @@ struct CapturedMediaItem: Identifiable {
   var name: String
   var description: String
   var usdzURL: URL?
+  var isDefault = false
 }
 
 /// Holds captured photos for each recognition category.
@@ -54,8 +63,49 @@ struct CapturedMediaItem: Identifiable {
 final class MediaCategoryStore {
   static let shared = MediaCategoryStore()
 
-  var objectItems: [CapturedMediaItem] = []
-  var peopleItems: [CapturedMediaItem] = []
+  var objectItems: [CapturedMediaItem]
+  var peopleItems: [CapturedMediaItem]
+
+  private init(bundle: Bundle = .main) {
+    objectItems = Self.telephoneItem(bundle: bundle).map { [$0] } ?? []
+    peopleItems = Self.paulItem(bundle: bundle).map { [$0] } ?? []
+  }
+
+  private static func telephoneItem(bundle: Bundle) -> CapturedMediaItem? {
+    guard
+      let modelURL = bundle.url(forResource: "Telephone", withExtension: "usdz"),
+      let photoURL = bundle.url(forResource: "Telephone", withExtension: "png"),
+      let thumbnail = UIImage(contentsOfFile: photoURL.path)
+    else {
+      return nil
+    }
+    return CapturedMediaItem(
+      id: UUID(uuidString: "4E4A786B-7911-44B7-95D6-997B6AD2DD35")!,
+      photo: thumbnail,
+      name: "Telephone",
+      description: "Dusty vintage rotary telephone",
+      usdzURL: modelURL,
+      isDefault: true
+    )
+  }
+
+  private static func paulItem(bundle: Bundle) -> CapturedMediaItem? {
+    guard
+      let modelURL = bundle.url(forResource: "Paul", withExtension: "usdz"),
+      let photoURL = bundle.url(forResource: "Paul", withExtension: "png"),
+      let photo = UIImage(contentsOfFile: photoURL.path)
+    else {
+      return nil
+    }
+    return CapturedMediaItem(
+      id: UUID(uuidString: "47B3D36C-B18D-41DA-B58D-03B6285DC656")!,
+      photo: photo,
+      name: "Paul",
+      description: "Paul",
+      usdzURL: modelURL,
+      isDefault: true
+    )
+  }
 }
 
 /// UIImagePickerController bridge supporting either the camera or the photo library.
@@ -114,19 +164,19 @@ struct CategorySectionView: View {
     VStack(alignment: .leading, spacing: 12) {
       Text(title)
         .font(.system(size: 18, weight: .semibold))
-        .foregroundStyle(.black)
+        .foregroundStyle(Color.relivingBurgundy)
 
       LazyVGrid(columns: columns, spacing: 12) {
         Button {
           showSourceOptions = true
         } label: {
           RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.gray.opacity(0.15))
+            .fill(Color.relivingBeige)
             .frame(width: 72, height: 72)
             .overlay {
               Image(systemName: "plus")
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.gray)
+                .foregroundStyle(Color.relivingDarkSage)
             }
         }
         .accessibilityLabel("Add \(title.lowercased()) photo")
@@ -142,20 +192,24 @@ struct CategorySectionView: View {
                   .aspectRatio(contentMode: .fill)
                   .frame(width: 72, height: 72)
                   .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                  .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                      .stroke(Color.relivingBeige, lineWidth: 3)
+                  }
 
                 if item.usdzURL != nil {
                   Image(systemName: "cube.fill")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(4)
-                    .background(Circle().fill(Color.black.opacity(0.6)))
+                    .background(Circle().fill(Color.relivingBurgundy))
                     .padding(3)
                 }
               }
 
               Text(item.name)
                 .font(.system(size: 12))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.relivingDarkSage)
                 .lineLimit(1)
                 .frame(width: 72)
             }
@@ -198,7 +252,7 @@ struct CategorySectionView: View {
         item: item,
         category: category,
         onUpdate: { updateItem($0) },
-        onDelete: { deleteItem(item) }
+        onDelete: item.isDefault ? nil : { deleteItem(item) }
       )
     }
   }
@@ -222,7 +276,7 @@ struct CapturedItemDetailView: View {
   @State var item: CapturedMediaItem
   let category: MediaCategoryKind
   let onUpdate: (CapturedMediaItem) -> Void
-  let onDelete: () -> Void
+  let onDelete: (() -> Void)?
 
   @Environment(\.dismiss) private var dismiss
   @State private var showDeleteConfirmation = false
@@ -237,6 +291,8 @@ struct CapturedItemDetailView: View {
             .aspectRatio(contentMode: .fit)
             .frame(maxHeight: 220)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(8)
+            .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
           if let usdzURL = item.usdzURL {
             USDZPreviewView(url: usdzURL)
@@ -258,19 +314,22 @@ struct CapturedItemDetailView: View {
                   .foregroundStyle(.secondary)
               }
               Spacer()
-              Button {
-                showEditor = true
-              } label: {
-                Image(systemName: "pencil")
-                  .frame(width: 44, height: 44)
+              if !item.isDefault {
+                Button {
+                  showEditor = true
+                } label: {
+                  Image(systemName: "pencil")
+                    .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Edit and regenerate")
               }
-              .accessibilityLabel("Edit and regenerate")
             }
           }
           .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(24)
       }
+      .background(Color.relivingIvory)
       .navigationTitle("Details")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -282,17 +341,20 @@ struct CapturedItemDetailView: View {
               .font(.system(size: 18, weight: .semibold))
           }
         }
-        ToolbarItem(placement: .navigationBarTrailing) {
-          Button(role: .destructive) {
-            showDeleteConfirmation = true
-          } label: {
-            Image(systemName: "trash")
+        if onDelete != nil {
+          ToolbarItem(placement: .navigationBarTrailing) {
+            Button(role: .destructive) {
+              showDeleteConfirmation = true
+            } label: {
+              Image(systemName: "trash")
+            }
           }
         }
       }
+      .tint(Color.relivingBurgundy)
       .confirmationDialog("Delete this item?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
         Button("Delete", role: .destructive) {
-          onDelete()
+          onDelete?()
           dismiss()
         }
         Button("Cancel", role: .cancel) {}
@@ -349,9 +411,12 @@ struct ImagePreparationFlow: View {
             .aspectRatio(contentMode: .fit)
             .frame(maxHeight: 320)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(8)
+            .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
           Text("Would you like to recolour or improve this image?")
             .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(Color.relivingBurgundy)
             .multilineTextAlignment(.center)
 
           VStack(spacing: 12) {
@@ -363,19 +428,18 @@ struct ImagePreparationFlow: View {
             } label: {
               Text("No")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.appPrimary)
+                .foregroundStyle(Color.relivingBurgundy)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
-                .overlay {
-                  Capsule()
-                    .stroke(Color.appPrimary, lineWidth: 1.5)
-                }
+                .background(Color.relivingLightSage, in: Capsule())
             }
           }
 
           Spacer()
         }
         .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.relivingIvory)
         .navigationTitle(existingItem == nil ? "New \(category.title)" : "Regenerate")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -387,6 +451,7 @@ struct ImagePreparationFlow: View {
             }
           }
         }
+        .tint(Color.relivingBurgundy)
       }
 
     case .prompt:
@@ -397,9 +462,12 @@ struct ImagePreparationFlow: View {
             .aspectRatio(contentMode: .fit)
             .frame(maxWidth: .infinity, maxHeight: 240)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(8)
+            .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
           Text("How should this image be improved?")
             .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(Color.relivingBurgundy)
 
           VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .topLeading) {
@@ -422,11 +490,11 @@ struct ImagePreparationFlow: View {
                 }
             }
             .padding(8)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.gray.opacity(0.1)))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.relivingBeige))
 
             Text("\(enhancementPrompt.count)/200")
               .font(.system(size: 12))
-              .foregroundStyle(.gray)
+              .foregroundStyle(Color.relivingDarkSage)
               .frame(maxWidth: .infinity, alignment: .trailing)
           }
 
@@ -441,6 +509,8 @@ struct ImagePreparationFlow: View {
           }
         }
         .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.relivingIvory)
         .navigationTitle("Improve Image")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -453,6 +523,7 @@ struct ImagePreparationFlow: View {
             }
           }
         }
+        .tint(Color.relivingBurgundy)
       }
 
     case .render(let prompt):

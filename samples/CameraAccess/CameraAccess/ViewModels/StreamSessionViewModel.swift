@@ -39,6 +39,7 @@ final class StreamSessionViewModel {
   var isDeviceSessionReady: Bool { sessionManager.isReady }
 
   var isStreaming: Bool { streamingStatus != .stopped }
+  let aprilTagTrackingService = AprilTagTrackingService()
 
   // MARK: - Private
 
@@ -87,6 +88,7 @@ final class StreamSessionViewModel {
   func endSession() {
     stream = nil
     clearListeners()
+    aprilTagTrackingService.reset()
     streamingStatus = .stopped
     currentVideoFrame = nil
     hasReceivedFirstFrame = false
@@ -155,6 +157,7 @@ final class StreamSessionViewModel {
         return
       }
       stream = newStream
+      aprilTagTrackingService.reset()
       streamingStatus = .waiting
       setupListeners(for: newStream)
       await newStream.start()
@@ -192,6 +195,7 @@ final class StreamSessionViewModel {
     switch state {
     case .stopped:
       currentVideoFrame = nil
+      aprilTagTrackingService.reset()
       streamingStatus = .stopped
       stream = nil
       clearListeners()
@@ -206,6 +210,7 @@ final class StreamSessionViewModel {
 
   private func handleVideoFrame(_ frame: VideoFrame) {
     if let image = frame.makeUIImage() {
+      aprilTagTrackingService.submit(image)
       currentVideoFrame = image
       if !hasReceivedFirstFrame {
         hasReceivedFirstFrame = true

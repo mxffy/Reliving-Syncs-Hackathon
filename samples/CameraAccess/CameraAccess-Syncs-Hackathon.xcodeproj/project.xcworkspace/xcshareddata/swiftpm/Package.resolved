@@ -1,5 +1,5 @@
 {
-  "originHash" : "9dd38f857db7479f1816015771b37a83ed7849590400ca2677a9c5f1b5014407",
+  "originHash" : "a0ea0639e852ce19edf7838eebca38a3c557472f5df44fa53179274d78ef1dce",
   "pins" : [
     {
       "identity" : "meta-wearables-dat-ios",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "c40db3978a76b97504b85ed9f082be5549c5a486",
         "version" : "0.7.0"
+      }
+    },
+    {
+      "identity" : "swiftapriltag",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/keyqcloud/SwiftAprilTag.git",
+      "state" : {
+        "revision" : "038cb9026711ddba05b71c16b32eb364bcfa6ef9",
+        "version" : "1.3.1"
       }
     }
   ],

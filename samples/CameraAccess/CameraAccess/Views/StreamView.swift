@@ -49,6 +49,8 @@ struct StreamView: View {
           .foregroundStyle(.white)
       }
 
+      CameraObjectOverlay(trackingService: viewModel.aprilTagTrackingService)
+
       // Controls layer - positioned based on orientation
       if isLandscape {
         HStack {

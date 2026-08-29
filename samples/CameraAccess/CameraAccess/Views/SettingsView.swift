@@ -28,14 +28,17 @@ struct SettingsView: View {
               .aspectRatio(contentMode: .fill)
               .frame(width: 120, height: 120)
               .clipShape(Circle())
+              .overlay {
+                Circle().stroke(Color.relivingBeige, lineWidth: 6)
+              }
 
             Text("Mary Bernard")
               .font(.system(size: 22, weight: .semibold))
-              .foregroundStyle(.black)
+              .foregroundStyle(Color.relivingBurgundy)
 
             Text("Age: 68")
               .font(.system(size: 16))
-              .foregroundStyle(.gray)
+              .foregroundStyle(Color.relivingDarkSage)
           }
           .padding(.top, 12)
 
@@ -46,6 +49,7 @@ struct SettingsView: View {
         }
         .padding(.all, 24)
       }
+      .background(Color.relivingIvory)
       .navigationTitle("Settings")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -59,6 +63,7 @@ struct SettingsView: View {
           .accessibilityLabel("Back")
         }
       }
+      .tint(Color.relivingBurgundy)
     }
   }
 }

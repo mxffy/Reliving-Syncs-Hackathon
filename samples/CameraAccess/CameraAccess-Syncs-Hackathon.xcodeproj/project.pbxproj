@@ -32,15 +32,23 @@
 		E66CC01D2F3E1A9300B07380 /* MWDATMockDeviceTestClient in Frameworks */ = {isa = PBXBuildFile; productRef = E66CC01E2F3E1A9300B07380 /* MWDATMockDeviceTestClient */; };
 		E66D30242E7DA71900470B48 /* MockDeviceKitButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = E66D30232E7DA71900470B48 /* MockDeviceKitButton.swift */; };
 		E6A188482EB918740097D0E1 /* StreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A188472EB918740097D0E1 /* StreamView.swift */; };
-		F0CA00012F97000100000001 /* PhoneCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00002F97000100000001 /* PhoneCameraView.swift */; };
 		E6DA451D2E79A63100E3F688 /* MockDeviceCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6DA45182E79A63100E3F688 /* MockDeviceCardView.swift */; };
 		E6DA451E2E79A63100E3F688 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6DA45172E79A63100E3F688 /* CardView.swift */; };
 		E6DA451F2E79A63100E3F688 /* MockDeviceKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6DA451A2E79A63100E3F688 /* MockDeviceKitView.swift */; };
 		E6FD3BCE2EB4D53A00E7FE5D /* NonStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */; };
-		FEEE00012F95000100000001 /* DeviceSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00002F95000100000001 /* DeviceSessionManager.swift */; };
+		F0CA00012F97000100000001 /* PhoneCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00002F97000100000001 /* PhoneCameraView.swift */; };
 		F0CA00022F97000200000001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00032F97000200000001 /* SettingsView.swift */; };
 		F0CA00042F97000300000001 /* 3D_object_rendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00052F97000300000001 /* 3D_object_rendering.swift */; };
 		F0CA00072F97000500000001 /* Rendering-Description.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00082F97000600000001 /* Rendering-Description.swift */; };
+		F0CA00092F97000700000001 /* CameraObjectOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA000A2F97000800000001 /* CameraObjectOverlay.swift */; };
+		F0CA000C2F97000900000001 /* Telephone.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000B2F97000900000001 /* Telephone.usdz */; };
+		F0CA000E2F97000A00000001 /* Paul.usdz in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000D2F97000A00000001 /* Paul.usdz */; };
+		F0CA00102F97000B00000001 /* Paul.png in Resources */ = {isa = PBXBuildFile; fileRef = F0CA000F2F97000B00000001 /* Paul.png */; };
+		F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00112F97000C00000001 /* RemiLoading.mp4 */; };
+		F0CA00142F97000D00000001 /* Telephone.png in Resources */ = {isa = PBXBuildFile; fileRef = F0CA00132F97000D00000001 /* Telephone.png */; };
+		F0CA00162F97000F00000001 /* AprilTagTrackingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */; };
+		F0CA00192F97001200000001 /* SwiftAprilTag in Frameworks */ = {isa = PBXBuildFile; productRef = F0CA00182F97001100000001 /* SwiftAprilTag */; };
+		FEEE00012F95000100000001 /* DeviceSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00002F95000100000001 /* DeviceSessionManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,7 +93,6 @@
 		8FD96B782E6F0A9800F56AB1 /* CameraAccess.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CameraAccess.entitlements; sourceTree = "<group>"; };
 		8FD96B792E6F0A9800F56AB1 /* CameraAccessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraAccessApp.swift; sourceTree = "<group>"; };
 		8FD96B7B2E6F0A9800F56AB1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		F0CA00062F97000400000001 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		8FFD5FF22E8422580035E446 /* CircleButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircleButton.swift; sourceTree = "<group>"; };
 		8FFD5FF32E8422580035E446 /* CustomButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomButton.swift; sourceTree = "<group>"; };
 		8FFD60292E8433E20035E446 /* MockDeviceKitViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceKitViewModel.swift; sourceTree = "<group>"; };
@@ -101,15 +108,23 @@
 		E66D30232E7DA71900470B48 /* MockDeviceKitButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceKitButton.swift; sourceTree = "<group>"; };
 		E699CC952E8150670052C240 /* CameraAccessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CameraAccessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E6A188472EB918740097D0E1 /* StreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamView.swift; sourceTree = "<group>"; };
-		F0CA00002F97000100000001 /* PhoneCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneCameraView.swift; sourceTree = "<group>"; };
 		E6DA45172E79A63100E3F688 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
 		E6DA45182E79A63100E3F688 /* MockDeviceCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceCardView.swift; sourceTree = "<group>"; };
 		E6DA451A2E79A63100E3F688 /* MockDeviceKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceKitView.swift; sourceTree = "<group>"; };
 		E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonStreamView.swift; sourceTree = "<group>"; };
-		FEEE00002F95000100000001 /* DeviceSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSessionManager.swift; sourceTree = "<group>"; };
+		F0CA00002F97000100000001 /* PhoneCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneCameraView.swift; sourceTree = "<group>"; };
 		F0CA00032F97000200000001 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		F0CA00052F97000300000001 /* 3D_object_rendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "3D_object_rendering.swift"; sourceTree = "<group>"; };
+		F0CA00052F97000300000001 /* 3D_object_rendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = 3D_object_rendering.swift; sourceTree = "<group>"; };
+		F0CA00062F97000400000001 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		F0CA00082F97000600000001 /* Rendering-Description.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering-Description.swift"; sourceTree = "<group>"; };
+		F0CA000A2F97000800000001 /* CameraObjectOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraObjectOverlay.swift; sourceTree = "<group>"; };
+		F0CA000B2F97000900000001 /* Telephone.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Telephone.usdz; sourceTree = "<group>"; };
+		F0CA000D2F97000A00000001 /* Paul.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = Paul.usdz; sourceTree = "<group>"; };
+		F0CA000F2F97000B00000001 /* Paul.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Paul.png; sourceTree = "<group>"; };
+		F0CA00112F97000C00000001 /* RemiLoading.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = RemiLoading.mp4; sourceTree = "<group>"; };
+		F0CA00132F97000D00000001 /* Telephone.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Telephone.png; sourceTree = "<group>"; };
+		F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AprilTagTrackingService.swift; sourceTree = "<group>"; };
+		FEEE00002F95000100000001 /* DeviceSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSessionManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -125,6 +140,7 @@
 				8FD96B952E6F0F7D00F56AB1 /* MWDATCore in Frameworks */,
 				8FD96B952E6F0F7D00F56AB2 /* MWDATCamera in Frameworks */,
 				8FD96B952E6F0F7D00F56AB3 /* MWDATMockDevice in Frameworks */,
+				F0CA00192F97001200000001 /* SwiftAprilTag in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -172,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				8FFD602B2E8433E20035E446 /* MockDeviceKit */,
+				F0CA00152F97000E00000001 /* AprilTagTrackingService.swift */,
 				8F2D237F2E856711002D0588 /* DebugMenuViewModel.swift */,
 				FEEE00002F95000100000001 /* DeviceSessionManager.swift */,
 				8FD96B6F2E6F0A9800F56AB1 /* StreamSessionViewModel.swift */,
@@ -197,6 +214,7 @@
 				F0CA00032F97000200000001 /* SettingsView.swift */,
 				F0CA00052F97000300000001 /* 3D_object_rendering.swift */,
 				F0CA00082F97000600000001 /* Rendering-Description.swift */,
+				F0CA000A2F97000800000001 /* CameraObjectOverlay.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -208,6 +226,11 @@
 				8FD96B702E6F0A9800F56AB1 /* ViewModels */,
 				8FD96B762E6F0A9800F56AB1 /* Views */,
 				8FD96B772E6F0A9800F56AB1 /* Assets.xcassets */,
+				F0CA000B2F97000900000001 /* Telephone.usdz */,
+				F0CA000D2F97000A00000001 /* Paul.usdz */,
+				F0CA000F2F97000B00000001 /* Paul.png */,
+				F0CA00112F97000C00000001 /* RemiLoading.mp4 */,
+				F0CA00132F97000D00000001 /* Telephone.png */,
 				8FD96B782E6F0A9800F56AB1 /* CameraAccess.entitlements */,
 				8FD96B792E6F0A9800F56AB1 /* CameraAccessApp.swift */,
 				8FD96B7B2E6F0A9800F56AB1 /* Info.plist */,
@@ -355,6 +378,7 @@
 			mainGroup = 5A5A5A5A5A5A5A5A5A5A5A5A;
 			packageReferences = (
 				95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,
+				F0CA00172F97001000000001 /* XCRemoteSwiftPackageReference "SwiftAprilTag" */,
 			);
 			productRefGroup = 7A7A7A7A7A7A7A7A7A7A7A7A /* Products */;
 			projectDirPath = "";
@@ -375,6 +399,11 @@
 				E66CC01B2F3E1A9300B07379 /* plant.png in Resources */,
 				E66CC01C2F3E1A9300B07379 /* plant.mp4 in Resources */,
 				8FD96B8D2E6F0A9800F56AB1 /* Assets.xcassets in Resources */,
+				F0CA000C2F97000900000001 /* Telephone.usdz in Resources */,
+				F0CA000E2F97000A00000001 /* Paul.usdz in Resources */,
+				F0CA00102F97000B00000001 /* Paul.png in Resources */,
+				F0CA00122F97000C00000001 /* RemiLoading.mp4 in Resources */,
+				F0CA00142F97000D00000001 /* Telephone.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -426,6 +455,8 @@
 				F0CA00022F97000200000001 /* SettingsView.swift in Sources */,
 				F0CA00042F97000300000001 /* 3D_object_rendering.swift in Sources */,
 				F0CA00072F97000500000001 /* Rendering-Description.swift in Sources */,
+				F0CA00092F97000700000001 /* CameraObjectOverlay.swift in Sources */,
+				F0CA00162F97000F00000001 /* AprilTagTrackingService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -788,6 +819,14 @@
 				version = 0.7.0;
 			};
 		};
+		F0CA00172F97001000000001 /* XCRemoteSwiftPackageReference "SwiftAprilTag" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/keyqcloud/SwiftAprilTag.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.3.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -810,6 +849,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
 			productName = MWDATMockDeviceTestClient;
+		};
+		F0CA00182F97001100000001 /* SwiftAprilTag */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F0CA00172F97001000000001 /* XCRemoteSwiftPackageReference "SwiftAprilTag" */;
+			productName = SwiftAprilTag;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

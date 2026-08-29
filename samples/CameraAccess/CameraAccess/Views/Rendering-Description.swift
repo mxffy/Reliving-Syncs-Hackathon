@@ -13,6 +13,7 @@
 // the photo with OpenAI, then sends it to Meshy's Image to 3D API.
 //
 
+import AVFoundation
 import QuickLook
 import SwiftUI
 import UIKit
@@ -47,6 +48,9 @@ struct RenderingDescriptionView: View {
   @State private var showError = false
   @State private var showDiscardConfirmation = false
   @State private var generatedItem: CapturedMediaItem?
+  @State private var showSuccessCelebration = false
+  @State private var successScale = 0.65
+  @State private var successOpacity = 0.0
 
   init(
     image: UIImage,
@@ -77,7 +81,7 @@ struct RenderingDescriptionView: View {
           generationView
         }
       }
-      .navigationTitle(generatedItem == nil ? "Creating \(category.title)" : "Preview")
+      .navigationTitle(showSuccessCelebration ? "Ready!" : generatedItem == nil ? "Creating \(category.title)" : "Preview")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .navigationBarLeading) {
@@ -94,6 +98,7 @@ struct RenderingDescriptionView: View {
           .disabled(isGenerating)
         }
       }
+      .tint(Color.relivingBurgundy)
       .alert("Couldn’t finish generation", isPresented: $showError) {
         Button("OK", role: .cancel) {}
       } message: {
@@ -120,27 +125,41 @@ struct RenderingDescriptionView: View {
 
   private var generationView: some View {
     ZStack {
-      Color.black.opacity(0.88).ignoresSafeArea()
+      Color.relivingIvory.ignoresSafeArea()
 
-      VStack(spacing: 22) {
-      Image(uiImage: image)
-        .resizable()
-        .aspectRatio(contentMode: .fit)
-          .frame(maxHeight: 300)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      VStack(spacing: 24) {
+        if showSuccessCelebration {
+          Image(.remiFinished)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 260, height: 260)
+            .scaleEffect(successScale)
+            .opacity(successOpacity)
 
-        if isGenerating {
-          ProgressView()
-            .tint(.white)
-            .scaleEffect(1.5)
-
-          Text(progressMessage)
-            .font(.system(size: 17, weight: .medium))
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
+          Text("Your memory is ready!")
+            .font(.system(size: 23, weight: .bold))
+            .foregroundStyle(Color.relivingBurgundy)
+            .scaleEffect(successScale)
+            .opacity(successOpacity)
         } else {
-          CustomButton(title: "Try Again", style: .primary, isDisabled: false) {
-            generate()
+          LoopingLoadingVideoView()
+            .frame(width: 230, height: 270)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+          if isGenerating {
+            ProgressView()
+              .tint(Color.relivingBurgundy)
+              .scaleEffect(1.5)
+              .padding(.top, 4)
+
+            Text(progressMessage)
+              .font(.system(size: 17, weight: .semibold))
+              .foregroundStyle(Color.relivingBurgundy)
+              .multilineTextAlignment(.center)
+          } else {
+            CustomButton(title: "Try Again", style: .primary, isDisabled: false) {
+              generate()
+            }
           }
         }
       }
@@ -155,6 +174,7 @@ struct RenderingDescriptionView: View {
           TextField("Name this \(category.title.lowercased())", text: $name)
             .textFieldStyle(.plain)
             .font(.system(size: 24, weight: .semibold))
+            .foregroundStyle(Color.relivingBurgundy)
             .multilineTextAlignment(.center)
             .submitLabel(.done)
           Divider()
@@ -164,21 +184,24 @@ struct RenderingDescriptionView: View {
           USDZPreviewView(url: usdzURL)
             .frame(height: 340)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(8)
+            .background(Color.relivingBeige, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
 
         VStack(alignment: .leading, spacing: 8) {
           HStack {
             Text("Description")
               .font(.system(size: 16, weight: .semibold))
+              .foregroundStyle(Color.relivingBurgundy)
             Spacer()
             Image(systemName: "pencil")
-              .foregroundStyle(.secondary)
+              .foregroundStyle(Color.relivingDarkSage)
           }
           TextEditor(text: $description)
             .font(.system(size: 15))
             .frame(height: 100)
             .padding(8)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.gray.opacity(0.1)))
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.relivingBeige))
             .onChange(of: description) { _, newValue in
               if newValue.count > descriptionCharacterLimit {
                 description = String(newValue.prefix(descriptionCharacterLimit))
@@ -186,12 +209,9 @@ struct RenderingDescriptionView: View {
             }
           Text("\(description.count)/\(descriptionCharacterLimit)")
             .font(.system(size: 12))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.relivingDarkSage)
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-
-        Text("Use?")
-          .font(.system(size: 20, weight: .semibold))
 
         CustomButton(title: "Use", style: .primary, isDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
           onComplete(
@@ -208,6 +228,7 @@ struct RenderingDescriptionView: View {
       }
       .padding(24)
     }
+    .background(Color.relivingIvory)
   }
 
   private func discardGeneratedModel() {
@@ -229,6 +250,9 @@ struct RenderingDescriptionView: View {
 
   private func generate() {
     isGenerating = true
+    showSuccessCelebration = false
+    successScale = 0.65
+    successOpacity = 0
     progressMessage = enhancementPrompt == nil ? "Connecting to Meshy…" : "Connecting to OpenAI…"
     Task {
       do {
@@ -258,9 +282,19 @@ struct RenderingDescriptionView: View {
             }
           }
         )
+        let completedItem = generatedItem(with: modelURL, photo: finalImage)
         await MainActor.run {
           isGenerating = false
-          generatedItem = generatedItem(with: modelURL, photo: finalImage)
+          showSuccessCelebration = true
+          withAnimation(.spring(response: 0.55, dampingFraction: 0.62)) {
+            successScale = 1
+            successOpacity = 1
+          }
+        }
+        try await Task.sleep(nanoseconds: 1_250_000_000)
+        await MainActor.run {
+          generatedItem = completedItem
+          showSuccessCelebration = false
         }
       } catch {
         await MainActor.run {
@@ -287,6 +321,52 @@ struct RenderingDescriptionView: View {
       return "Connecting to OpenAI…"
     case .recoloring:
       return "Recoloring with OpenAI…"
+    }
+  }
+}
+
+private struct LoopingLoadingVideoView: UIViewRepresentable {
+  func makeUIView(context: Context) -> LoopingVideoUIView {
+    LoopingVideoUIView()
+  }
+
+  func updateUIView(_ uiView: LoopingVideoUIView, context: Context) {}
+}
+
+private final class LoopingVideoUIView: UIView {
+  private let player = AVQueuePlayer()
+  private var looper: AVPlayerLooper?
+
+  override class var layerClass: AnyClass { AVPlayerLayer.self }
+
+  private var playerLayer: AVPlayerLayer {
+    layer as! AVPlayerLayer
+  }
+
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    backgroundColor = UIColor(red: 234 / 255, green: 224 / 255, blue: 208 / 255, alpha: 1)
+    playerLayer.player = player
+    playerLayer.videoGravity = .resizeAspect
+
+    if let videoURL = Bundle.main.url(forResource: "RemiLoading", withExtension: "mp4") {
+      let item = AVPlayerItem(url: videoURL)
+      looper = AVPlayerLooper(player: player, templateItem: item)
+      player.isMuted = true
+      player.play()
+    }
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    if window == nil {
+      player.pause()
+    } else {
+      player.play()
     }
   }
 }

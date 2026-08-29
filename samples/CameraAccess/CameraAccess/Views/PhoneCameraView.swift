@@ -14,6 +14,7 @@ import UIKit
 @Observable
 final class PhoneCameraViewModel {
   let session = AVCaptureSession()
+  let aprilTagTrackingService: AprilTagTrackingService
   var capturedPhoto: UIImage?
   var showPhotoPreview = false
   var showError = false
@@ -22,8 +23,17 @@ final class PhoneCameraViewModel {
 
   @ObservationIgnored private let sessionQueue = DispatchQueue(label: "com.meta.CameraAccess.phone-camera")
   @ObservationIgnored private let photoOutput = AVCapturePhotoOutput()
+  @ObservationIgnored private let videoOutput = AVCaptureVideoDataOutput()
+  @ObservationIgnored private let videoOutputQueue = DispatchQueue(label: "com.meta.CameraAccess.phone-camera-frames", qos: .utility)
   @ObservationIgnored private var photoProcessor: PhonePhotoProcessor?
+  @ObservationIgnored private var frameProcessor: PhoneVideoFrameProcessor?
   @ObservationIgnored private var isConfigured = false
+
+  // AprilTagTrackingService's init is main-actor isolated; callers construct this view model on the main actor.
+  @MainActor
+  init() {
+    aprilTagTrackingService = AprilTagTrackingService()
+  }
 
   func start() {
     switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -48,6 +58,9 @@ final class PhoneCameraViewModel {
     sessionQueue.async { [weak self] in
       guard let self, self.session.isRunning else { return }
       self.session.stopRunning()
+    }
+    Task { @MainActor in
+      aprilTagTrackingService.reset()
     }
   }
 
@@ -118,12 +131,31 @@ final class PhoneCameraViewModel {
     }
 
     let input = try AVCaptureDeviceInput(device: camera)
-    guard session.canAddInput(input), session.canAddOutput(photoOutput) else {
+    guard
+      session.canAddInput(input),
+      session.canAddOutput(photoOutput),
+      session.canAddOutput(videoOutput)
+    else {
       throw PhoneCameraError.configurationFailed
     }
 
     session.addInput(input)
     session.addOutput(photoOutput)
+
+    videoOutput.alwaysDiscardsLateVideoFrames = true
+    let processor = PhoneVideoFrameProcessor { [weak self] image in
+      Task { @MainActor in
+        self?.aprilTagTrackingService.submit(image)
+      }
+    }
+    frameProcessor = processor
+    videoOutput.setSampleBufferDelegate(processor, queue: videoOutputQueue)
+    session.addOutput(videoOutput)
+
+    // The view is locked to portrait, so the sensor's landscape-right buffers need a fixed rotation.
+    if let connection = videoOutput.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
+      connection.videoRotationAngle = 90
+    }
   }
 
   private func presentError(_ message: String) {
@@ -169,6 +201,32 @@ private final class PhonePhotoProcessor: NSObject, AVCapturePhotoCaptureDelegate
   }
 }
 
+private final class PhoneVideoFrameProcessor: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+  private let context = CIContext()
+  private let minimumFrameInterval: TimeInterval = 0.1
+  private var lastFrameAt: TimeInterval = 0
+  private let onFrame: (UIImage) -> Void
+
+  init(onFrame: @escaping (UIImage) -> Void) {
+    self.onFrame = onFrame
+  }
+
+  func captureOutput(
+    _ output: AVCaptureOutput,
+    didOutput sampleBuffer: CMSampleBuffer,
+    from connection: AVCaptureConnection
+  ) {
+    let now = CACurrentMediaTime()
+    guard now - lastFrameAt >= minimumFrameInterval else { return }
+    guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+    lastFrameAt = now
+
+    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+    guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+    onFrame(UIImage(cgImage: cgImage))
+  }
+}
+
 private final class CameraPreviewUIView: UIView {
   override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
 
@@ -202,6 +260,8 @@ struct PhoneCameraView: View {
 
       PhoneCameraPreview(session: viewModel.session)
         .ignoresSafeArea()
+
+      CameraObjectOverlay(trackingService: viewModel.aprilTagTrackingService)
 
       if !viewModel.isReady {
         ProgressView()
