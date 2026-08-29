@@ -40,6 +40,7 @@
 		FEEE00012F95000100000001 /* DeviceSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEE00002F95000100000001 /* DeviceSessionManager.swift */; };
 		F0CA00022F97000200000001 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00032F97000200000001 /* SettingsView.swift */; };
 		F0CA00042F97000300000001 /* 3D_object_rendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00052F97000300000001 /* 3D_object_rendering.swift */; };
+		F0CA00072F97000500000001 /* Rendering-Description.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CA00082F97000600000001 /* Rendering-Description.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -108,6 +109,7 @@
 		FEEE00002F95000100000001 /* DeviceSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSessionManager.swift; sourceTree = "<group>"; };
 		F0CA00032F97000200000001 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F0CA00052F97000300000001 /* 3D_object_rendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "3D_object_rendering.swift"; sourceTree = "<group>"; };
+		F0CA00082F97000600000001 /* Rendering-Description.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rendering-Description.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -140,6 +142,7 @@
 		5A5A5A5A5A5A5A5A5A5A5A5A = {
 			isa = PBXGroup;
 			children = (
+				F0CA00062F97000400000001 /* Secrets.xcconfig */,
 				8FD96B7D2E6F0A9800F56AB1 /* CameraAccess */,
 				E66CC00E2F3E05D900B07379 /* CameraAccessUITests */,
 				8F2A14F12DDBCEB900D4E5F2 /* Frameworks */,
@@ -193,6 +196,7 @@
 				E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */,
 				F0CA00032F97000200000001 /* SettingsView.swift */,
 				F0CA00052F97000300000001 /* 3D_object_rendering.swift */,
+				F0CA00082F97000600000001 /* Rendering-Description.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,7 +211,6 @@
 				8FD96B782E6F0A9800F56AB1 /* CameraAccess.entitlements */,
 				8FD96B792E6F0A9800F56AB1 /* CameraAccessApp.swift */,
 				8FD96B7B2E6F0A9800F56AB1 /* Info.plist */,
-				F0CA00062F97000400000001 /* Secrets.xcconfig */,
 			);
 			path = CameraAccess;
 			sourceTree = "<group>";
@@ -422,6 +425,7 @@
 				E6FD3BCE2EB4D53A00E7FE5D /* NonStreamView.swift in Sources */,
 				F0CA00022F97000200000001 /* SettingsView.swift in Sources */,
 				F0CA00042F97000300000001 /* 3D_object_rendering.swift in Sources */,
+				F0CA00072F97000500000001 /* Rendering-Description.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

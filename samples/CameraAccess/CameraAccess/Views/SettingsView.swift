@@ -40,8 +40,8 @@ struct SettingsView: View {
           .padding(.top, 12)
 
           VStack(spacing: 24) {
-            CategorySectionView(title: "Objects", photos: $mediaStore.objectPhotos)
-            CategorySectionView(title: "People", photos: $mediaStore.peoplePhotos)
+            CategorySectionView(title: "Objects", category: .object, items: $mediaStore.objectItems)
+            CategorySectionView(title: "People", category: .person, items: $mediaStore.peopleItems)
           }
         }
         .padding(.all, 24)
