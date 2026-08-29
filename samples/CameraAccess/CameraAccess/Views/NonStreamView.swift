@@ -26,6 +26,7 @@ struct NonStreamView: View {
   @Bindable var wearablesVM: WearablesViewModel
   let onStartPhoneCamera: () -> Void
   @State private var showSettingsMenu: Bool = false
+  @State private var showAppSettings: Bool = false
 
   private var isRegistered: Bool {
     wearablesVM.registrationState == .registered
@@ -53,6 +54,17 @@ struct NonStreamView: View {
 
       VStack {
         HStack {
+          Button {
+            showAppSettings = true
+          } label: {
+            Image(systemName: "gearshape.fill")
+              .font(.system(size: 22, weight: .semibold))
+              .foregroundStyle(.black)
+              .frame(width: 44, height: 44)
+          }
+          .accessibilityLabel("Settings")
+          .accessibilityIdentifier("settings_button")
+
           Spacer()
           if isRegistered {
             Button {
@@ -126,6 +138,12 @@ struct NonStreamView: View {
         Spacer()
       }
       .padding(.all, 24)
+    }
+    .onAppear {
+      OrientationManager.shared.restrictToPortrait()
+    }
+    .fullScreenCover(isPresented: $showAppSettings) {
+      SettingsView()
     }
   }
 

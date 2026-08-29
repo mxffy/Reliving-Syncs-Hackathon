@@ -18,10 +18,31 @@ import SwiftUI
 
 struct HomeScreenView: View {
   var viewModel: WearablesViewModel
+  @State private var showSettings = false
 
   var body: some View {
     ZStack {
       Color.white.edgesIgnoringSafeArea(.all)
+
+      VStack {
+        HStack {
+          Button {
+            showSettings = true
+          } label: {
+            Image(systemName: "gearshape.fill")
+              .font(.system(size: 22, weight: .semibold))
+              .foregroundStyle(.black)
+              .frame(width: 44, height: 44)
+          }
+          .accessibilityLabel("Settings")
+          .accessibilityIdentifier("settings_button")
+
+          Spacer()
+        }
+        .padding(.horizontal, 12)
+
+        Spacer()
+      }
 
       VStack(spacing: 12) {
         Spacer()
@@ -69,6 +90,12 @@ struct HomeScreenView: View {
         }
       }
       .padding(.all, 24)
+    }
+    .onAppear {
+      OrientationManager.shared.restrictToPortrait()
+    }
+    .fullScreenCover(isPresented: $showSettings) {
+      SettingsView()
     }
   }
 

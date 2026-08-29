@@ -221,6 +221,7 @@ struct PhoneCameraView: View {
     }
     .onAppear {
       viewModel.start()
+      OrientationManager.shared.restrictToPortrait()
     }
     .onDisappear {
       viewModel.stop()

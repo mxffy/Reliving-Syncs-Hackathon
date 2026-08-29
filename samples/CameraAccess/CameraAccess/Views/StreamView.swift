@@ -20,6 +20,12 @@ import SwiftUI
 struct StreamView: View {
   @Bindable var viewModel: StreamSessionViewModel
   var wearablesVM: WearablesViewModel
+  @Environment(\.horizontalSizeClass) var horizontalSizeClass
+  @Environment(\.verticalSizeClass) var verticalSizeClass
+  
+  var isLandscape: Bool {
+    horizontalSizeClass == .regular && verticalSizeClass == .compact
+  }
 
   var body: some View {
     ZStack {
@@ -43,18 +49,30 @@ struct StreamView: View {
           .foregroundStyle(.white)
       }
 
-      // Bottom controls layer
-
-      VStack {
-        Spacer()
-        ControlsView(viewModel: viewModel)
+      // Controls layer - positioned based on orientation
+      if isLandscape {
+        HStack {
+          Spacer()
+          ControlsView(viewModel: viewModel)
+          Spacer()
+        }
+        .padding(.all, 24)
+      } else {
+        VStack {
+          Spacer()
+          ControlsView(viewModel: viewModel)
+        }
+        .padding(.all, 24)
       }
-      .padding(.all, 24)
+    }
+    .onAppear {
+      OrientationManager.shared.allowAllOrientations()
     }
     .onDisappear {
       if viewModel.streamingStatus != .stopped {
         Task { await viewModel.stopSession() }
       }
+      OrientationManager.shared.restrictToPortrait()
     }
     // Show captured photos from DAT SDK in a preview sheet
     .sheet(isPresented: $viewModel.showPhotoPreview) {

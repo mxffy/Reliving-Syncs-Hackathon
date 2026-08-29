@@ -18,13 +18,46 @@
 import Foundation
 import MWDATCore
 import SwiftUI
+import UIKit
 
 #if DEBUG
 import MWDATMockDevice
 #endif
 
+// Global state for orientation management
+class OrientationManager {
+  static let shared = OrientationManager()
+  var shouldLockOrientation = false
+  
+  func restrictToPortrait() {
+    shouldLockOrientation = true
+    AppDelegate.orientationMask = .portrait
+    let orientation = UIInterfaceOrientation.portrait.rawValue
+    UIDevice.current.setValue(orientation, forKey: "orientation")
+    AppDelegate.orientationMask = .portrait
+  }
+  
+  func allowAllOrientations() {
+    shouldLockOrientation = false
+    AppDelegate.orientationMask = .all
+  }
+}
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+  static var orientationMask = UIInterfaceOrientationMask.portrait
+  
+  func application(
+    _ application: UIApplication,
+    supportedInterfaceOrientationsFor window: UIWindow?
+  ) -> UIInterfaceOrientationMask {
+    return AppDelegate.orientationMask
+  }
+}
+
 @main
 struct CameraAccessApp: App {
+  @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
   var body: some Scene {
     WindowGroup {
       CameraAccessRootView()
